@@ -44,6 +44,7 @@ const GroupItem = memo<GroupItemProps>(({ group, activeTopicId, activeThreadId }
             fav={topic.favorite}
             id={topic.id}
             key={topic.id}
+            metadata={topic.metadata}
             threadId={activeThreadId}
             title={topic.title}
           />
