@@ -110,7 +110,9 @@ const PlatformList = memo<PlatformListProps>(
         </div>
         <div style={{ borderTop: `1px solid ${theme.colorBorder}`, padding: 12 }}>
           <a
-            href="#"
+            href="https://lobehub.com/docs/usage/channels/overview"
+            rel="noopener noreferrer"
+            target="_blank"
             style={{
               alignItems: 'center',
               color: theme.colorTextSecondary,
