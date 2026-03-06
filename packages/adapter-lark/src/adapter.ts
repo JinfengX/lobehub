@@ -95,13 +95,16 @@ export class LarkAdapter implements Adapter<LarkThreadId, LarkRawMessage> {
     }
 
     // Decrypt encrypted events if needed
-    if (body.encrypt && this.encryptKey) {
+    if (body.encrypt) {
+      if (!this.encryptKey) {
+        return new Response('Encrypted event but no encrypt key configured', { status: 401 });
+      }
       try {
         const decrypted = decryptLarkEvent(body.encrypt, this.encryptKey);
         body = JSON.parse(decrypted);
       } catch {
         this.logger.error('Event decryption failed');
-        return new Response('Decryption failed', { status: 400 });
+        return new Response('Decryption failed', { status: 401 });
       }
     }
 

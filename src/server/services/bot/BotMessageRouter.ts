@@ -269,12 +269,14 @@ export class BotMessageRouter {
   ): Promise<Response> {
     log('handleChatSdkWebhook: platform=%s, appId=%s', platform, appId);
 
+    const bodyBuffer = await req.arrayBuffer();
+
     // Direct lookup by applicationId
     if (appId) {
       const key = `${platform}:${appId}`;
       const bot = this.botInstances.get(key);
       if (bot?.webhooks && platform in bot.webhooks) {
-        return (bot.webhooks as any)[platform](req);
+        return (bot.webhooks as any)[platform](this.cloneRequest(req, bodyBuffer));
       }
       log('handleChatSdkWebhook: no bot registered for %s', key);
       return new Response(`No bot configured for ${platform}`, { status: 404 });
@@ -285,7 +287,7 @@ export class BotMessageRouter {
       if (!key.startsWith(`${platform}:`)) continue;
       if (bot.webhooks && platform in bot.webhooks) {
         try {
-          const resp = await (bot.webhooks as any)[platform](req);
+          const resp = await (bot.webhooks as any)[platform](this.cloneRequest(req, bodyBuffer));
           if (resp.status !== 401) return resp;
         } catch {
           // try next
