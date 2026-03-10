@@ -1,14 +1,15 @@
 import { isDesktop } from '@lobechat/const';
+import { type RuntimeEnvMode } from '@lobechat/types';
 import { Flexbox, Icon, Popover, Skeleton, Tooltip } from '@lobehub/ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import {
   ChevronDownIcon,
   CloudIcon,
   LaptopIcon,
-  LaptopMinimalCheckIcon,
+  MonitorOffIcon,
   SquircleDashed,
 } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAgentStore } from '@/store/agent';
@@ -20,10 +21,13 @@ import { useAgentId } from '../hooks/useAgentId';
 import { useUpdateAgentConfig } from '../hooks/useUpdateAgentConfig';
 import WorkingDirectoryContent from './WorkingDirectoryContent';
 
+const MODE_ICONS: Record<RuntimeEnvMode, typeof LaptopIcon> = {
+  cloud: CloudIcon,
+  local: LaptopIcon,
+  none: MonitorOffIcon,
+};
+
 const styles = createStaticStyles(({ css }) => ({
-  active: css`
-    background: ${cssVar.colorFillTertiary};
-  `,
   bar: css`
     padding-block: 0;
     padding-inline: 4px;
@@ -49,7 +53,7 @@ const styles = createStaticStyles(({ css }) => ({
       background: ${cssVar.colorFillSecondary};
     }
   `,
-  cloudDesc: css`
+  modeDesc: css`
     font-size: 12px;
     color: ${cssVar.colorTextTertiary};
   `,
@@ -93,9 +97,9 @@ const RuntimeEnv = memo(() => {
   const { updateAgentChatConfig } = useUpdateAgentConfig();
   const [dirPopoverOpen, setDirPopoverOpen] = useState(false);
 
-  const [isLoading, isEnabled] = useAgentStore((s) => [
+  const [isLoading, runtimeMode] = useAgentStore((s) => [
     agentByIdSelectors.isAgentConfigLoadingById(agentId)(s),
-    chatConfigByIdSelectors.isLocalSystemEnabledById(agentId)(s),
+    chatConfigByIdSelectors.getRuntimeModeById(agentId)(s),
   ]);
 
   // Get working directory
@@ -105,8 +109,16 @@ const RuntimeEnv = memo(() => {
   );
   const effectiveWorkingDirectory = topicWorkingDirectory || agentWorkingDirectory;
 
-  // Only show on desktop
-  if (!isDesktop) return null;
+  const switchMode = useCallback(
+    async (mode: RuntimeEnvMode) => {
+      if (mode === runtimeMode) return;
+
+      await updateAgentChatConfig({
+        runtimeEnv: { runtimeMode: mode },
+      });
+    },
+    [runtimeMode, updateAgentChatConfig],
+  );
 
   // Skeleton placeholder to prevent layout jump during loading
   if (!agentId || isLoading) {
@@ -118,89 +130,72 @@ const RuntimeEnv = memo(() => {
     );
   }
 
-  const isLocal = isEnabled;
+  const ModeIcon = MODE_ICONS[runtimeMode];
+  const modeLabel = t(`runtimeEnv.mode.${runtimeMode}`);
 
   const displayName = effectiveWorkingDirectory
     ? effectiveWorkingDirectory.split('/').findLast(Boolean) || effectiveWorkingDirectory
     : tPlugin('localSystem.workingDirectory.notSet');
 
+  const modes: { desc: string; icon: typeof LaptopIcon; label: string; mode: RuntimeEnvMode }[] = [
+    // Local mode is desktop-only
+    ...(isDesktop
+      ? [
+          {
+            desc: t('runtimeEnv.mode.localDesc'),
+            icon: LaptopIcon,
+            label: t('runtimeEnv.mode.local'),
+            mode: 'local' as RuntimeEnvMode,
+          },
+        ]
+      : []),
+    {
+      desc: t('runtimeEnv.mode.cloudDesc'),
+      icon: CloudIcon,
+      label: t('runtimeEnv.mode.cloud'),
+      mode: 'cloud',
+    },
+    {
+      desc: t('runtimeEnv.mode.noneDesc'),
+      icon: MonitorOffIcon,
+      label: t('runtimeEnv.mode.none'),
+      mode: 'none',
+    },
+  ];
+
   const modeContent = (
     <Flexbox gap={4} style={{ minWidth: 280 }}>
-      {/* Local mode option */}
-      <Flexbox
-        horizontal
-        align={'flex-start'}
-        className={cx(styles.modeOption, isLocal && styles.modeOptionActive)}
-        gap={12}
-        onClick={async () => {
-          if (!isLocal) {
-            await updateAgentChatConfig({ localSystem: { enabled: true } });
-          }
-        }}
-      >
+      {modes.map(({ mode, icon, label, desc }) => (
         <Flexbox
-          align={'center'}
-          className={styles.modeOptionIcon}
-          flex={'none'}
-          height={32}
-          justify={'center'}
-          width={32}
+          horizontal
+          align={'flex-start'}
+          className={cx(styles.modeOption, runtimeMode === mode && styles.modeOptionActive)}
+          gap={12}
+          key={mode}
+          onClick={() => switchMode(mode)}
         >
-          <Icon icon={LaptopMinimalCheckIcon} />
+          <Flexbox
+            align={'center'}
+            className={styles.modeOptionIcon}
+            flex={'none'}
+            height={32}
+            justify={'center'}
+            width={32}
+          >
+            <Icon icon={icon} />
+          </Flexbox>
+          <Flexbox flex={1}>
+            <div className={styles.modeOptionTitle}>{label}</div>
+            <div className={styles.modeOptionDesc}>{desc}</div>
+          </Flexbox>
         </Flexbox>
-        <Flexbox flex={1}>
-          <div className={styles.modeOptionTitle}>{t('runtimeEnv.mode.local')}</div>
-          <div className={styles.modeOptionDesc}>{t('runtimeEnv.mode.localDesc')}</div>
-        </Flexbox>
-      </Flexbox>
-      {/* Cloud mode option */}
-      <Flexbox
-        horizontal
-        align={'flex-start'}
-        className={cx(styles.modeOption, !isLocal && styles.modeOptionActive)}
-        gap={12}
-        onClick={async () => {
-          if (isLocal) {
-            await updateAgentChatConfig({ localSystem: { enabled: false } });
-          }
-        }}
-      >
-        <Flexbox
-          align={'center'}
-          className={styles.modeOptionIcon}
-          flex={'none'}
-          height={32}
-          justify={'center'}
-          width={32}
-        >
-          <Icon icon={CloudIcon} />
-        </Flexbox>
-        <Flexbox flex={1}>
-          <div className={styles.modeOptionTitle}>{t('runtimeEnv.mode.cloud')}</div>
-          <div className={styles.modeOptionDesc}>{t('runtimeEnv.mode.cloudDesc')}</div>
-        </Flexbox>
-      </Flexbox>
+      ))}
     </Flexbox>
   );
 
-  return (
-    <Flexbox horizontal align={'center'} className={styles.bar} justify={'space-between'}>
-      {/* Left: Mode selector */}
-      <Popover
-        content={modeContent}
-        placement="top"
-        styles={{ content: { padding: 4 } }}
-        trigger="click"
-      >
-        <div className={styles.button}>
-          <Icon icon={isLocal ? LaptopIcon : CloudIcon} size={14} />
-          <span>{isLocal ? t('runtimeEnv.mode.local') : t('runtimeEnv.mode.cloud')}</span>
-          <Icon icon={ChevronDownIcon} size={12} />
-        </div>
-      </Popover>
-
-      {/* Right: Working directory (local mode) or cloud description (cloud mode) */}
-      {isLocal ? (
+  const rightContent = () => {
+    if (runtimeMode === 'local') {
+      return (
         <Popover
           open={dirPopoverOpen}
           placement="topRight"
@@ -230,9 +225,34 @@ const RuntimeEnv = memo(() => {
             )}
           </div>
         </Popover>
-      ) : (
-        <span className={styles.cloudDesc}>{t('runtimeEnv.mode.cloudDesc')}</span>
-      )}
+      );
+    }
+
+    if (runtimeMode === 'cloud') {
+      return <span className={styles.modeDesc}>{t('runtimeEnv.mode.cloudDesc')}</span>;
+    }
+
+    return <span className={styles.modeDesc}>{t('runtimeEnv.mode.noneDesc')}</span>;
+  };
+
+  return (
+    <Flexbox horizontal align={'center'} className={styles.bar} justify={'space-between'}>
+      {/* Left: Mode selector */}
+      <Popover
+        content={modeContent}
+        placement="top"
+        styles={{ content: { padding: 4 } }}
+        trigger="click"
+      >
+        <div className={styles.button}>
+          <Icon icon={ModeIcon} size={14} />
+          <span>{modeLabel}</span>
+          <Icon icon={ChevronDownIcon} size={12} />
+        </div>
+      </Popover>
+
+      {/* Right: Context based on mode */}
+      {rightContent()}
     </Flexbox>
   );
 });

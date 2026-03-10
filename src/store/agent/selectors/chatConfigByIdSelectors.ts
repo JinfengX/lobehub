@@ -1,6 +1,6 @@
 import { DEFAULT_AGENT_CHAT_CONFIG, DEFAULT_AGENT_SEARCH_FC_MODEL } from '@lobechat/const';
 import { isContextCachingModel, isThinkingWithToolClaudeModel } from '@lobechat/model-runtime';
-import { type LobeAgentChatConfig } from '@lobechat/types';
+import { type LobeAgentChatConfig, type RuntimeEnvMode } from '@lobechat/types';
 
 import { type AgentStoreState } from '@/store/agent/initialState';
 
@@ -63,23 +63,34 @@ const isMemoryToolEnabledById = (agentId: string) => (s: AgentStoreState) =>
 const getMemoryToolEffortById = (agentId: string) => (s: AgentStoreState) =>
   getChatConfigById(agentId)(s).memory?.effort ?? 'medium';
 
-const getLocalSystemConfigById = (agentId: string) => (s: AgentStoreState) =>
-  getChatConfigById(agentId)(s).localSystem;
+const getRuntimeEnvConfigById = (agentId: string) => (s: AgentStoreState) =>
+  getChatConfigById(agentId)(s).runtimeEnv;
 
 const isLocalSystemEnabledById = (agentId: string) => (s: AgentStoreState) =>
-  getChatConfigById(agentId)(s).localSystem?.enabled ?? true;
+  getRuntimeModeById(agentId)(s) === 'local';
+
+/**
+ * Get runtime environment mode by agent ID.
+ * Defaults to 'local' on desktop if not set.
+ */
+const getRuntimeModeById =
+  (agentId: string) =>
+  (s: AgentStoreState): RuntimeEnvMode => {
+    return getChatConfigById(agentId)(s).runtimeEnv?.runtimeMode ?? 'local';
+  };
 
 export const chatConfigByIdSelectors = {
   getChatConfigById,
   getEnableHistoryCountById,
   getHistoryCountById,
+  getRuntimeEnvConfigById,
   getMemoryToolConfigById,
   getMemoryToolEffortById,
-  getLocalSystemConfigById,
+  getRuntimeModeById,
   getSearchFCModelById,
   getSearchModeById,
   getUseModelBuiltinSearchById,
   isEnableSearchById,
-  isMemoryToolEnabledById,
   isLocalSystemEnabledById,
+  isMemoryToolEnabledById,
 };
