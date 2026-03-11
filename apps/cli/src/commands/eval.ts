@@ -23,46 +23,6 @@ interface JsonOption {
   json?: boolean;
 }
 
-interface RunGetOptions extends JsonOption {
-  runId: string;
-}
-
-interface RunSetStatusOptions extends JsonOption {
-  runId: string;
-  status: 'completed' | 'external';
-}
-
-interface DatasetGetOptions extends JsonOption {
-  datasetId: string;
-}
-
-interface RunTopicsListOptions extends JsonOption {
-  onlyExternal?: boolean;
-  runId: string;
-}
-
-interface ThreadsListOptions extends JsonOption {
-  topicId: string;
-}
-
-interface MessagesListOptions extends JsonOption {
-  threadId?: string;
-  topicId: string;
-}
-
-interface TestCasesCountOptions extends JsonOption {
-  datasetId: string;
-}
-
-interface RunTopicReportResultOptions extends JsonOption {
-  correct: boolean;
-  resultJson: Record<string, unknown>;
-  runId: string;
-  score: number;
-  threadId?: string;
-  topicId: string;
-}
-
 const printJson = (data: unknown) => {
   console.log(JSON.stringify(data, null, 2));
 };
@@ -183,7 +143,7 @@ export function registerEvalCommand(program: Command) {
   const evalCmd = program.command('eval').description('Manage evaluation workflows');
 
   // ============================================
-  // Internal Benchmark Operations
+  // Benchmark Operations
   // ============================================
   const benchmarkCmd = evalCmd.command('benchmark').description('Manage evaluation benchmarks');
 
@@ -294,7 +254,7 @@ export function registerEvalCommand(program: Command) {
     );
 
   // ============================================
-  // Internal Dataset Operations
+  // Dataset Operations
   // ============================================
   const datasetCmd = evalCmd.command('dataset').description('Manage evaluation datasets');
 
@@ -314,12 +274,16 @@ export function registerEvalCommand(program: Command) {
 
   datasetCmd
     .command('get')
-    .description('Get dataset details')
+    .description('Get dataset details (use --external for external eval API)')
     .requiredOption('--id <id>', 'Dataset ID')
+    .option('--external', 'Use external evaluation API')
     .option('--json', 'Output JSON envelope')
-    .action(async (options: JsonOption & { id: string }) =>
+    .action(async (options: JsonOption & { external?: boolean; id: string }) =>
       executeCommand(options, async () => {
         const client = await getTrpcClient();
+        if (options.external) {
+          return client.agentEvalExternal.datasetGet.query({ datasetId: options.id });
+        }
         return client.agentEval.getDataset.query({ id: options.id });
       }),
     );
@@ -408,7 +372,7 @@ export function registerEvalCommand(program: Command) {
     );
 
   // ============================================
-  // Internal TestCase Operations
+  // TestCase Operations
   // ============================================
   const testcaseCmd = evalCmd.command('testcase').description('Manage evaluation test cases');
 
@@ -529,12 +493,24 @@ export function registerEvalCommand(program: Command) {
       ),
     );
 
-  // ============================================
-  // Internal Run Operations
-  // ============================================
-  const iRunCmd = evalCmd.command('run').description('Manage evaluation runs');
+  testcaseCmd
+    .command('count')
+    .description('Count test cases by dataset (external eval API)')
+    .requiredOption('--dataset-id <id>', 'Dataset ID')
+    .option('--json', 'Output JSON envelope')
+    .action(async (options: JsonOption & { datasetId: string }) =>
+      executeCommand(options, async () => {
+        const client = await getTrpcClient();
+        return client.agentEvalExternal.testCasesCount.query({ datasetId: options.datasetId });
+      }),
+    );
 
-  iRunCmd
+  // ============================================
+  // Run Operations
+  // ============================================
+  const runCmd = evalCmd.command('run').description('Manage evaluation runs');
+
+  runCmd
     .command('list')
     .description('List evaluation runs')
     .option('--benchmark-id <id>', 'Filter by benchmark ID')
@@ -565,19 +541,23 @@ export function registerEvalCommand(program: Command) {
         }),
     );
 
-  iRunCmd
+  runCmd
     .command('get')
-    .description('Get run details')
+    .description('Get run details (use --external for external eval API)')
     .requiredOption('--id <id>', 'Run ID')
+    .option('--external', 'Use external evaluation API')
     .option('--json', 'Output JSON envelope')
-    .action(async (options: JsonOption & { id: string }) =>
+    .action(async (options: JsonOption & { external?: boolean; id: string }) =>
       executeCommand(options, async () => {
         const client = await getTrpcClient();
+        if (options.external) {
+          return client.agentEvalExternal.runGet.query({ runId: options.id });
+        }
         return client.agentEval.getRunDetails.query({ id: options.id });
       }),
     );
 
-  iRunCmd
+  runCmd
     .command('create')
     .description('Create an evaluation run')
     .requiredOption('--dataset-id <id>', 'Dataset ID')
@@ -620,7 +600,7 @@ export function registerEvalCommand(program: Command) {
         ),
     );
 
-  iRunCmd
+  runCmd
     .command('delete')
     .description('Delete an evaluation run')
     .requiredOption('--id <id>', 'Run ID')
@@ -636,7 +616,7 @@ export function registerEvalCommand(program: Command) {
       ),
     );
 
-  iRunCmd
+  runCmd
     .command('start')
     .description('Start an evaluation run')
     .requiredOption('--id <id>', 'Run ID')
@@ -653,7 +633,7 @@ export function registerEvalCommand(program: Command) {
       ),
     );
 
-  iRunCmd
+  runCmd
     .command('abort')
     .description('Abort a running evaluation')
     .requiredOption('--id <id>', 'Run ID')
@@ -669,7 +649,7 @@ export function registerEvalCommand(program: Command) {
       ),
     );
 
-  iRunCmd
+  runCmd
     .command('retry-errors')
     .description('Retry failed test cases in a run')
     .requiredOption('--id <id>', 'Run ID')
@@ -685,7 +665,7 @@ export function registerEvalCommand(program: Command) {
       ),
     );
 
-  iRunCmd
+  runCmd
     .command('progress')
     .description('Get run progress')
     .requiredOption('--id <id>', 'Run ID')
@@ -697,7 +677,7 @@ export function registerEvalCommand(program: Command) {
       }),
     );
 
-  iRunCmd
+  runCmd
     .command('results')
     .description('Get run results')
     .requiredOption('--id <id>', 'Run ID')
@@ -709,68 +689,38 @@ export function registerEvalCommand(program: Command) {
       }),
     );
 
-  // ============================================
-  // External Evaluation Operations (existing)
-  // ============================================
-  const extCmd = evalCmd.command('ext').description('Manage external evaluation workflows');
-
-  const runCmd = extCmd.command('run').description('Manage external evaluation runs');
-
-  runCmd
-    .command('get')
-    .description('Get run information')
-    .requiredOption('--run-id <id>', 'Run ID')
-    .option('--json', 'Output JSON envelope')
-    .action(async (options: RunGetOptions) =>
-      executeCommand(options, async () => {
-        const client = await getTrpcClient();
-        return client.agentEvalExternal.runGet.query({ runId: options.runId });
-      }),
-    );
-
   runCmd
     .command('set-status')
-    .description('Set run status (external API supports completed or external)')
-    .requiredOption('--run-id <id>', 'Run ID')
+    .description('Set run status (external eval API, supports completed or external)')
+    .requiredOption('--id <id>', 'Run ID')
     .requiredOption('--status <status>', 'Status (completed | external)', parseRunStatus)
     .option('--json', 'Output JSON envelope')
-    .action(async (options: RunSetStatusOptions) =>
+    .action(async (options: JsonOption & { id: string; status: 'completed' | 'external' }) =>
       executeCommand(
         options,
         async () => {
           const client = await getTrpcClient();
           return client.agentEvalExternal.runSetStatus.mutate({
-            runId: options.runId,
+            runId: options.id,
             status: options.status,
           });
         },
-        `Run ${pc.bold(options.runId)} status updated to ${pc.bold(options.status)}`,
+        `Run ${pc.bold(options.id)} status updated to ${pc.bold(options.status)}`,
       ),
     );
 
-  extCmd
-    .command('dataset')
-    .description('Manage evaluation datasets')
-    .command('get')
-    .description('Get dataset information')
-    .requiredOption('--dataset-id <id>', 'Dataset ID')
-    .option('--json', 'Output JSON envelope')
-    .action(async (options: DatasetGetOptions) =>
-      executeCommand(options, async () => {
-        const client = await getTrpcClient();
-        return client.agentEvalExternal.datasetGet.query({ datasetId: options.datasetId });
-      }),
-    );
+  // ============================================
+  // Run-Topic Operations (external eval API)
+  // ============================================
+  const runTopicCmd = evalCmd.command('run-topic').description('Manage evaluation run topics');
 
-  extCmd
-    .command('run-topics')
-    .description('Manage run topics')
+  runTopicCmd
     .command('list')
     .description('List topics in a run')
     .requiredOption('--run-id <id>', 'Run ID')
     .option('--only-external', 'Only return topics pending external evaluation')
     .option('--json', 'Output JSON envelope')
-    .action(async (options: RunTopicsListOptions) =>
+    .action(async (options: JsonOption & { onlyExternal?: boolean; runId: string }) =>
       executeCommand(options, async () => {
         const client = await getTrpcClient();
         return client.agentEvalExternal.runTopicsList.query({
@@ -780,55 +730,7 @@ export function registerEvalCommand(program: Command) {
       }),
     );
 
-  extCmd
-    .command('threads')
-    .description('Manage evaluation threads')
-    .command('list')
-    .description('List threads by topic')
-    .requiredOption('--topic-id <id>', 'Topic ID')
-    .option('--json', 'Output JSON envelope')
-    .action(async (options: ThreadsListOptions) =>
-      executeCommand(options, async () => {
-        const client = await getTrpcClient();
-        return client.agentEvalExternal.threadsList.query({ topicId: options.topicId });
-      }),
-    );
-
-  extCmd
-    .command('messages')
-    .description('Manage evaluation messages')
-    .command('list')
-    .description('List messages by topic and optional thread')
-    .requiredOption('--topic-id <id>', 'Topic ID')
-    .option('--thread-id <id>', 'Thread ID')
-    .option('--json', 'Output JSON envelope')
-    .action(async (options: MessagesListOptions) =>
-      executeCommand(options, async () => {
-        const client = await getTrpcClient();
-        return client.agentEvalExternal.messagesList.query({
-          threadId: options.threadId,
-          topicId: options.topicId,
-        });
-      }),
-    );
-
-  extCmd
-    .command('test-cases')
-    .description('Manage evaluation test cases')
-    .command('count')
-    .description('Count test cases by dataset')
-    .requiredOption('--dataset-id <id>', 'Dataset ID')
-    .option('--json', 'Output JSON envelope')
-    .action(async (options: TestCasesCountOptions) =>
-      executeCommand(options, async () => {
-        const client = await getTrpcClient();
-        return client.agentEvalExternal.testCasesCount.query({ datasetId: options.datasetId });
-      }),
-    );
-
-  extCmd
-    .command('run-topic')
-    .description('Manage evaluation run-topic reporting')
+  runTopicCmd
     .command('report-result')
     .description('Report one evaluation result for a run topic')
     .requiredOption('--run-id <id>', 'Run ID')
@@ -838,21 +740,69 @@ export function registerEvalCommand(program: Command) {
     .requiredOption('--correct <boolean>', 'Whether the result is correct', parseBoolean)
     .requiredOption('--result-json <json>', 'Raw evaluation result JSON object', parseResultJson)
     .option('--json', 'Output JSON envelope')
-    .action(async (options: RunTopicReportResultOptions) =>
-      executeCommand(
-        options,
-        async () => {
-          const client = await getTrpcClient();
-          return client.agentEvalExternal.runTopicReportResult.mutate({
-            correct: options.correct,
-            result: options.resultJson,
-            runId: options.runId,
-            score: options.score,
-            threadId: options.threadId,
-            topicId: options.topicId,
-          });
+    .action(
+      async (
+        options: JsonOption & {
+          correct: boolean;
+          resultJson: Record<string, unknown>;
+          runId: string;
+          score: number;
+          threadId?: string;
+          topicId: string;
         },
-        `Reported result for topic ${pc.bold(options.topicId)}`,
-      ),
+      ) =>
+        executeCommand(
+          options,
+          async () => {
+            const client = await getTrpcClient();
+            return client.agentEvalExternal.runTopicReportResult.mutate({
+              correct: options.correct,
+              result: options.resultJson,
+              runId: options.runId,
+              score: options.score,
+              threadId: options.threadId,
+              topicId: options.topicId,
+            });
+          },
+          `Reported result for topic ${pc.bold(options.topicId)}`,
+        ),
+    );
+
+  // ============================================
+  // Eval Thread Operations (external eval API)
+  // ============================================
+  evalCmd
+    .command('thread')
+    .description('Manage evaluation threads')
+    .command('list')
+    .description('List threads by topic')
+    .requiredOption('--topic-id <id>', 'Topic ID')
+    .option('--json', 'Output JSON envelope')
+    .action(async (options: JsonOption & { topicId: string }) =>
+      executeCommand(options, async () => {
+        const client = await getTrpcClient();
+        return client.agentEvalExternal.threadsList.query({ topicId: options.topicId });
+      }),
+    );
+
+  // ============================================
+  // Eval Message Operations (external eval API)
+  // ============================================
+  evalCmd
+    .command('message')
+    .description('Manage evaluation messages')
+    .command('list')
+    .description('List messages by topic and optional thread')
+    .requiredOption('--topic-id <id>', 'Topic ID')
+    .option('--thread-id <id>', 'Thread ID')
+    .option('--json', 'Output JSON envelope')
+    .action(async (options: JsonOption & { threadId?: string; topicId: string }) =>
+      executeCommand(options, async () => {
+        const client = await getTrpcClient();
+        return client.agentEvalExternal.messagesList.query({
+          threadId: options.threadId,
+          topicId: options.topicId,
+        });
+      }),
     );
 }

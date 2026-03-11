@@ -96,249 +96,8 @@ describe('eval command', () => {
     return program;
   };
 
-  it('should call runGet and output json envelope', async () => {
-    mockTrpcClient.agentEvalExternal.runGet.query.mockResolvedValue({
-      config: { k: 1 },
-      datasetId: 'dataset-1',
-      id: 'run-1',
-    });
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'run',
-      'get',
-      '--run-id',
-      'run-1',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.runGet.query).toHaveBeenCalledWith({ runId: 'run-1' });
-
-    const payload = JSON.parse(logSpy.mock.calls[0][0]);
-    expect(payload).toEqual({
-      data: {
-        config: { k: 1 },
-        datasetId: 'dataset-1',
-        id: 'run-1',
-      },
-      error: null,
-      ok: true,
-      version: 'v1',
-    });
-  });
-
-  it('should call datasetGet and output json envelope', async () => {
-    mockTrpcClient.agentEvalExternal.datasetGet.query.mockResolvedValue({
-      id: 'dataset-1',
-      metadata: { preset: 'deepsearchqa' },
-    });
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'dataset',
-      'get',
-      '--dataset-id',
-      'dataset-1',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.datasetGet.query).toHaveBeenCalledWith({
-      datasetId: 'dataset-1',
-    });
-  });
-
-  it('should pass onlyExternal to runTopicsList', async () => {
-    mockTrpcClient.agentEvalExternal.runTopicsList.query.mockResolvedValue([]);
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'run-topics',
-      'list',
-      '--run-id',
-      'run-1',
-      '--only-external',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.runTopicsList.query).toHaveBeenCalledWith({
-      onlyExternal: true,
-      runId: 'run-1',
-    });
-  });
-
-  it('should pass topicId and threadId to messagesList', async () => {
-    mockTrpcClient.agentEvalExternal.messagesList.query.mockResolvedValue([]);
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'messages',
-      'list',
-      '--topic-id',
-      'topic-1',
-      '--thread-id',
-      'thread-1',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.messagesList.query).toHaveBeenCalledWith({
-      threadId: 'thread-1',
-      topicId: 'topic-1',
-    });
-  });
-
-  it('should parse and report run-topic result', async () => {
-    mockTrpcClient.agentEvalExternal.runTopicReportResult.mutate.mockResolvedValue({
-      success: true,
-    });
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'run-topic',
-      'report-result',
-      '--run-id',
-      'run-1',
-      '--topic-id',
-      'topic-1',
-      '--thread-id',
-      'thread-1',
-      '--score',
-      '0.91',
-      '--correct',
-      'true',
-      '--result-json',
-      '{"grade":"A"}',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.runTopicReportResult.mutate).toHaveBeenCalledWith({
-      correct: true,
-      result: { grade: 'A' },
-      runId: 'run-1',
-      score: 0.91,
-      threadId: 'thread-1',
-      topicId: 'topic-1',
-    });
-  });
-
-  it('should update run status', async () => {
-    mockTrpcClient.agentEvalExternal.runSetStatus.mutate.mockResolvedValue({
-      runId: 'run-1',
-      status: 'completed',
-      success: true,
-    });
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'run',
-      'set-status',
-      '--run-id',
-      'run-1',
-      '--status',
-      'completed',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.runSetStatus.mutate).toHaveBeenCalledWith({
-      runId: 'run-1',
-      status: 'completed',
-    });
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('status updated to'));
-  });
-
-  it('should output json error envelope when command fails', async () => {
-    const error = Object.assign(new Error('Run not found'), {
-      data: { code: 'NOT_FOUND' },
-    });
-    mockTrpcClient.agentEvalExternal.runGet.query.mockRejectedValue(error);
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'run',
-      'get',
-      '--run-id',
-      'run-404',
-      '--json',
-    ]);
-
-    const payload = JSON.parse(logSpy.mock.calls[0][0]);
-    expect(payload).toEqual({
-      data: null,
-      error: { code: 'NOT_FOUND', message: 'Run not found' },
-      ok: false,
-      version: 'v1',
-    });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-  });
-
-  it('should query test case count', async () => {
-    mockTrpcClient.agentEvalExternal.testCasesCount.query.mockResolvedValue({ count: 12 });
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'test-cases',
-      'count',
-      '--dataset-id',
-      'dataset-1',
-      '--json',
-    ]);
-
-    expect(mockTrpcClient.agentEvalExternal.testCasesCount.query).toHaveBeenCalledWith({
-      datasetId: 'dataset-1',
-    });
-  });
-
-  it('should log plain error without --json', async () => {
-    mockTrpcClient.agentEvalExternal.threadsList.query.mockRejectedValue(new Error('boom'));
-
-    const program = createProgram();
-    await program.parseAsync([
-      'node',
-      'test',
-      'eval',
-      'ext',
-      'threads',
-      'list',
-      '--topic-id',
-      'topic-1',
-    ]);
-
-    expect(log.error).toHaveBeenCalledWith('boom');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-  });
-
   // ============================================
-  // Internal Benchmark tests
+  // Benchmark tests
   // ============================================
   describe('benchmark', () => {
     it('should list benchmarks', async () => {
@@ -385,9 +144,9 @@ describe('eval command', () => {
   });
 
   // ============================================
-  // Internal Dataset tests
+  // Dataset tests
   // ============================================
-  describe('internal dataset', () => {
+  describe('dataset', () => {
     it('should list datasets', async () => {
       mockTrpcClient.agentEval.listDatasets.query.mockResolvedValue([{ id: 'd1', name: 'DS 1' }]);
 
@@ -395,6 +154,39 @@ describe('eval command', () => {
       await program.parseAsync(['node', 'test', 'eval', 'dataset', 'list', '--json']);
 
       expect(mockTrpcClient.agentEval.listDatasets.query).toHaveBeenCalled();
+    });
+
+    it('should get dataset via internal API', async () => {
+      mockTrpcClient.agentEval.getDataset.query.mockResolvedValue({ id: 'd1' });
+
+      const program = createProgram();
+      await program.parseAsync(['node', 'test', 'eval', 'dataset', 'get', '--id', 'd1', '--json']);
+
+      expect(mockTrpcClient.agentEval.getDataset.query).toHaveBeenCalledWith({ id: 'd1' });
+    });
+
+    it('should get dataset via external API with --external', async () => {
+      mockTrpcClient.agentEvalExternal.datasetGet.query.mockResolvedValue({
+        id: 'dataset-1',
+        metadata: { preset: 'deepsearchqa' },
+      });
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'dataset',
+        'get',
+        '--id',
+        'dataset-1',
+        '--external',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.datasetGet.query).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+      });
     });
 
     it('should create a dataset', async () => {
@@ -423,7 +215,7 @@ describe('eval command', () => {
   });
 
   // ============================================
-  // Internal TestCase tests
+  // TestCase tests
   // ============================================
   describe('testcase', () => {
     it('should list test cases', async () => {
@@ -480,10 +272,30 @@ describe('eval command', () => {
 
       expect(mockTrpcClient.agentEval.deleteTestCase.mutate).toHaveBeenCalledWith({ id: 'tc1' });
     });
+
+    it('should count test cases via external API', async () => {
+      mockTrpcClient.agentEvalExternal.testCasesCount.query.mockResolvedValue({ count: 12 });
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'testcase',
+        'count',
+        '--dataset-id',
+        'dataset-1',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.testCasesCount.query).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+      });
+    });
   });
 
   // ============================================
-  // Internal Run tests
+  // Run tests
   // ============================================
   describe('run', () => {
     it('should list runs', async () => {
@@ -493,6 +305,48 @@ describe('eval command', () => {
       await program.parseAsync(['node', 'test', 'eval', 'run', 'list', '--json']);
 
       expect(mockTrpcClient.agentEval.listRuns.query).toHaveBeenCalled();
+    });
+
+    it('should get run via internal API', async () => {
+      mockTrpcClient.agentEval.getRunDetails.query.mockResolvedValue({ id: 'r1' });
+
+      const program = createProgram();
+      await program.parseAsync(['node', 'test', 'eval', 'run', 'get', '--id', 'r1', '--json']);
+
+      expect(mockTrpcClient.agentEval.getRunDetails.query).toHaveBeenCalledWith({ id: 'r1' });
+    });
+
+    it('should get run via external API with --external', async () => {
+      mockTrpcClient.agentEvalExternal.runGet.query.mockResolvedValue({
+        config: { k: 1 },
+        datasetId: 'dataset-1',
+        id: 'run-1',
+      });
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'run',
+        'get',
+        '--id',
+        'run-1',
+        '--external',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.runGet.query).toHaveBeenCalledWith({
+        runId: 'run-1',
+      });
+
+      const payload = JSON.parse(logSpy.mock.calls[0][0]);
+      expect(payload).toEqual({
+        data: { config: { k: 1 }, datasetId: 'dataset-1', id: 'run-1' },
+        error: null,
+        ok: true,
+        version: 'v1',
+      });
     });
 
     it('should create a run', async () => {
@@ -566,6 +420,181 @@ describe('eval command', () => {
       await program.parseAsync(['node', 'test', 'eval', 'run', 'delete', '--id', 'r1']);
 
       expect(mockTrpcClient.agentEval.deleteRun.mutate).toHaveBeenCalledWith({ id: 'r1' });
+    });
+
+    it('should set run status via external API', async () => {
+      mockTrpcClient.agentEvalExternal.runSetStatus.mutate.mockResolvedValue({
+        runId: 'run-1',
+        status: 'completed',
+        success: true,
+      });
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'run',
+        'set-status',
+        '--id',
+        'run-1',
+        '--status',
+        'completed',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.runSetStatus.mutate).toHaveBeenCalledWith({
+        runId: 'run-1',
+        status: 'completed',
+      });
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('status updated to'));
+    });
+  });
+
+  // ============================================
+  // Run-Topic tests (external eval API)
+  // ============================================
+  describe('run-topic', () => {
+    it('should list run topics', async () => {
+      mockTrpcClient.agentEvalExternal.runTopicsList.query.mockResolvedValue([]);
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'run-topic',
+        'list',
+        '--run-id',
+        'run-1',
+        '--only-external',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.runTopicsList.query).toHaveBeenCalledWith({
+        onlyExternal: true,
+        runId: 'run-1',
+      });
+    });
+
+    it('should report run-topic result', async () => {
+      mockTrpcClient.agentEvalExternal.runTopicReportResult.mutate.mockResolvedValue({
+        success: true,
+      });
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'run-topic',
+        'report-result',
+        '--run-id',
+        'run-1',
+        '--topic-id',
+        'topic-1',
+        '--thread-id',
+        'thread-1',
+        '--score',
+        '0.91',
+        '--correct',
+        'true',
+        '--result-json',
+        '{"grade":"A"}',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.runTopicReportResult.mutate).toHaveBeenCalledWith({
+        correct: true,
+        result: { grade: 'A' },
+        runId: 'run-1',
+        score: 0.91,
+        threadId: 'thread-1',
+        topicId: 'topic-1',
+      });
+    });
+  });
+
+  // ============================================
+  // Eval thread/message tests (external eval API)
+  // ============================================
+  describe('eval thread', () => {
+    it('should list threads by topic', async () => {
+      mockTrpcClient.agentEvalExternal.threadsList.query.mockResolvedValue([]);
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'thread',
+        'list',
+        '--topic-id',
+        'topic-1',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.threadsList.query).toHaveBeenCalledWith({
+        topicId: 'topic-1',
+      });
+    });
+  });
+
+  describe('eval message', () => {
+    it('should list messages by topic and thread', async () => {
+      mockTrpcClient.agentEvalExternal.messagesList.query.mockResolvedValue([]);
+
+      const program = createProgram();
+      await program.parseAsync([
+        'node',
+        'test',
+        'eval',
+        'message',
+        'list',
+        '--topic-id',
+        'topic-1',
+        '--thread-id',
+        'thread-1',
+        '--json',
+      ]);
+
+      expect(mockTrpcClient.agentEvalExternal.messagesList.query).toHaveBeenCalledWith({
+        threadId: 'thread-1',
+        topicId: 'topic-1',
+      });
+    });
+  });
+
+  // ============================================
+  // Error handling
+  // ============================================
+  describe('error handling', () => {
+    it('should output json error envelope when command fails', async () => {
+      const error = Object.assign(new Error('Run not found'), {
+        data: { code: 'NOT_FOUND' },
+      });
+      mockTrpcClient.agentEval.getRunDetails.query.mockRejectedValue(error);
+
+      const program = createProgram();
+      await program.parseAsync(['node', 'test', 'eval', 'run', 'get', '--id', 'run-404', '--json']);
+
+      const payload = JSON.parse(logSpy.mock.calls[0][0]);
+      expect(payload).toEqual({
+        data: null,
+        error: { code: 'NOT_FOUND', message: 'Run not found' },
+        ok: false,
+        version: 'v1',
+      });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should log plain error without --json', async () => {
+      mockTrpcClient.agentEvalExternal.threadsList.query.mockRejectedValue(new Error('boom'));
+
+      const program = createProgram();
+      await program.parseAsync(['node', 'test', 'eval', 'thread', 'list', '--topic-id', 'topic-1']);
+
+      expect(log.error).toHaveBeenCalledWith('boom');
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
 });
