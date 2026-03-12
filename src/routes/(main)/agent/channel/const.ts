@@ -1,8 +1,6 @@
-import { SiDiscord, SiTelegram } from '@icons-pack/react-simple-icons';
+import { Discord, Lark, QQ, Telegram } from '@lobehub/ui/icons';
 import type { LucideIcon } from 'lucide-react';
 import type { FC } from 'react';
-
-import { LarkIcon, QQIcon } from './icons';
 
 export interface ChannelProvider {
   /** Lark-style auth: appId + appSecret instead of botToken */
@@ -40,7 +38,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
       publicKey: 'Public Key',
       token: 'Bot Token',
     },
-    icon: SiDiscord,
+    icon: Discord,
     id: 'discord',
     name: 'Discord',
     webhookMode: 'auto',
@@ -55,7 +53,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
       secretToken: 'Webhook Secret',
       token: 'Bot Token',
     },
-    icon: SiTelegram,
+    icon: Telegram,
     id: 'telegram',
     name: 'Telegram',
     webhookMode: 'auto',
@@ -73,7 +71,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
       verificationToken: 'Verification Token',
       webhook: 'Event Subscription URL',
     },
-    icon: LarkIcon,
+    icon: Lark,
     id: 'feishu',
     name: '飞书',
   },
@@ -90,7 +88,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
       verificationToken: 'Verification Token',
       webhook: 'Event Subscription URL',
     },
-    icon: LarkIcon,
+    icon: Lark,
     id: 'lark',
     name: 'Lark',
   },
@@ -104,7 +102,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
       appSecret: 'App Secret',
       webhook: 'Callback URL',
     },
-    icon: QQIcon,
+    icon: QQ,
     id: 'qq',
     name: 'QQ',
     webhookMode: 'manual',
