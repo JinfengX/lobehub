@@ -38,6 +38,7 @@ import {
 } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/slices/auth/selectors';
+import { userGeneralSettingsSelectors } from '@/store/user/slices/settings/selectors';
 
 export enum SettingsGroupKey {
   Account = 'account',
@@ -71,6 +72,7 @@ export const useCategory = () => {
     userProfileSelectors.nickName(s),
   ]);
   const remoteServerUrl = useElectronStore(electronSyncSelectors.remoteServerUrl);
+  const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
 
   // Process avatar URL for desktop environment
   const avatarUrl = useMemo(() => {
@@ -95,11 +97,6 @@ export const useCategory = () => {
         icon: ChartColumnBigIcon,
         key: SettingsTabs.Stats,
         label: tAuth('tab.stats'),
-      },
-      showApiKeyManage && {
-        icon: KeyIcon,
-        key: SettingsTabs.APIKey,
-        label: tAuth('tab.apikey'),
       },
     ].filter(Boolean) as CategoryItem[];
 
@@ -232,6 +229,11 @@ export const useCategory = () => {
         key: SettingsTabs.Storage,
         label: t('tab.storage'),
       },
+      isDevMode && {
+        icon: KeyIcon,
+        key: SettingsTabs.APIKey,
+        label: tAuth('tab.apikey'),
+      },
       {
         icon: EllipsisIcon,
         key: SettingsTabs.Advanced,
@@ -260,6 +262,7 @@ export const useCategory = () => {
     mobile,
     showAiImage,
     showApiKeyManage,
+    isDevMode,
     avatarUrl,
     username,
   ]);

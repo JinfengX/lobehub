@@ -6,83 +6,12 @@ import { type LobeChatDatabase } from '@/database/type';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { SystemAgentService } from '@/server/services/systemAgent';
 
-import { DiscordRestApi } from './discordRestApi';
-import { LarkRestApi } from './larkRestApi';
+import { getPlatformDescriptor } from './platforms';
+import { DiscordRestApi } from './platforms/discord';
 import { renderError, renderFinalReply, renderStepProgress, splitMessage } from './replyTemplate';
-import { TelegramRestApi } from './telegramRestApi';
+import type { PlatformMessenger } from './types';
 
 const log = debug('lobe-server:bot:callback');
-
-// --------------- Platform helpers ---------------
-
-function extractDiscordChannelId(platformThreadId: string): string {
-  const parts = platformThreadId.split(':');
-  return parts[3] || parts[2];
-}
-
-function extractTelegramChatId(platformThreadId: string): string {
-  return platformThreadId.split(':')[1];
-}
-
-function extractLarkChatId(platformThreadId: string): string {
-  return platformThreadId.split(':')[1];
-}
-
-function parseTelegramMessageId(compositeId: string): number {
-  const colonIdx = compositeId.lastIndexOf(':');
-  return colonIdx !== -1 ? Number(compositeId.slice(colonIdx + 1)) : Number(compositeId);
-}
-
-const TELEGRAM_CHAR_LIMIT = 4000;
-const LARK_CHAR_LIMIT = 4000;
-
-// --------------- Platform-agnostic messenger ---------------
-
-interface PlatformMessenger {
-  createMessage: (content: string) => Promise<void>;
-  editMessage: (messageId: string, content: string) => Promise<void>;
-  removeReaction: (messageId: string, emoji: string) => Promise<void>;
-  triggerTyping: () => Promise<void>;
-  updateThreadName?: (name: string) => Promise<void>;
-}
-
-function createDiscordMessenger(
-  discord: DiscordRestApi,
-  channelId: string,
-  platformThreadId: string,
-): PlatformMessenger {
-  return {
-    createMessage: (content) => discord.createMessage(channelId, content).then(() => {}),
-    editMessage: (messageId, content) => discord.editMessage(channelId, messageId, content),
-    removeReaction: (messageId, emoji) => discord.removeOwnReaction(channelId, messageId, emoji),
-    triggerTyping: () => discord.triggerTyping(channelId),
-    updateThreadName: (name) => {
-      const threadId = platformThreadId.split(':')[3];
-      return threadId ? discord.updateChannelName(threadId, name) : Promise.resolve();
-    },
-  };
-}
-
-function createTelegramMessenger(telegram: TelegramRestApi, chatId: string): PlatformMessenger {
-  return {
-    createMessage: (content) => telegram.sendMessage(chatId, content).then(() => {}),
-    editMessage: (messageId, content) =>
-      telegram.editMessageText(chatId, parseTelegramMessageId(messageId), content),
-    removeReaction: (messageId) =>
-      telegram.removeMessageReaction(chatId, parseTelegramMessageId(messageId)),
-    triggerTyping: () => telegram.sendChatAction(chatId, 'typing'),
-  };
-}
-
-function createLarkMessenger(lark: LarkRestApi, chatId: string): PlatformMessenger {
-  return {
-    createMessage: (content) => lark.sendMessage(chatId, content).then(() => {}),
-    editMessage: (messageId, content) => lark.editMessage(messageId, content),
-    // Lark has no reaction/typing API for bots
-    removeReaction: () => Promise.resolve(),
-    triggerTyping: () => Promise.resolve(),
-  };
-}
 
 // --------------- Callback body types ---------------
 
@@ -173,42 +102,21 @@ export class BotCallbackService {
       credentials = JSON.parse(row.credentials);
     }
 
-    const isLark = platform === 'lark' || platform === 'feishu';
+    const descriptor = getPlatformDescriptor(platform);
+    if (!descriptor) {
+      throw new Error(`Unsupported platform: ${platform}`);
+    }
 
-    if (isLark ? !credentials.appId || !credentials.appSecret : !credentials.botToken) {
+    const missingCreds = descriptor.requiredCredentials.filter((k) => !credentials[k]);
+    if (missingCreds.length > 0) {
       throw new Error(`Bot credentials incomplete for ${platform} appId=${applicationId}`);
     }
 
-    switch (platform) {
-      case 'telegram': {
-        const telegram = new TelegramRestApi(credentials.botToken);
-        const chatId = extractTelegramChatId(platformThreadId);
-        return {
-          botToken: credentials.botToken,
-          charLimit: TELEGRAM_CHAR_LIMIT,
-          messenger: createTelegramMessenger(telegram, chatId),
-        };
-      }
-      case 'lark':
-      case 'feishu': {
-        const lark = new LarkRestApi(credentials.appId, credentials.appSecret, platform);
-        const chatId = extractLarkChatId(platformThreadId);
-        return {
-          botToken: credentials.appId,
-          charLimit: LARK_CHAR_LIMIT,
-          messenger: createLarkMessenger(lark, chatId),
-        };
-      }
-      case 'discord':
-      default: {
-        const discord = new DiscordRestApi(credentials.botToken);
-        const channelId = extractDiscordChannelId(platformThreadId);
-        return {
-          botToken: credentials.botToken,
-          messenger: createDiscordMessenger(discord, channelId, platformThreadId),
-        };
-      }
-    }
+    return {
+      botToken: credentials.botToken || credentials.appId,
+      charLimit: descriptor.charLimit,
+      messenger: descriptor.createMessenger(credentials, platformThreadId),
+    };
   }
 
   private async handleStep(
@@ -310,8 +218,9 @@ export class BotCallbackService {
     try {
       if (platform === 'discord') {
         // Use reactionChannelId (parent channel for mentions, thread for follow-ups)
+        const descriptor = getPlatformDescriptor(platform)!;
         const discord = new DiscordRestApi(botToken);
-        const targetChannelId = reactionChannelId || extractDiscordChannelId(platformThreadId);
+        const targetChannelId = reactionChannelId || descriptor.extractChatId(platformThreadId);
         await discord.removeOwnReaction(targetChannelId, userMessageId, '👀');
       } else {
         await messenger.removeReaction(userMessageId, '👀');

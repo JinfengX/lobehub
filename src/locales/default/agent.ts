@@ -33,6 +33,8 @@ export default {
   'channel.publicKey': 'Public Key',
   'channel.publicKeyHint': 'Optional. Used to verify interaction requests from Discord.',
   'channel.publicKeyPlaceholder': 'Required for interaction verification',
+  'channel.qq.appIdHint': 'Your QQ Bot App ID from QQ Open Platform',
+  'channel.qq.description': 'Connect this assistant to QQ for group chats and direct messages.',
   'channel.removeChannel': 'Remove Channel',
   'channel.removed': 'Channel removed',
   'channel.removeFailed': 'Failed to remove channel',

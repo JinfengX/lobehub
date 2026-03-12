@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  Alert,
-  Flexbox,
-  Form,
-  type FormGroupItemType,
-  type FormItemProps,
-  Icon,
-  Tag,
-} from '@lobehub/ui';
+import { Alert, Flexbox, Form, type FormGroupItemType, type FormItemProps, Tag } from '@lobehub/ui';
 import { Button, Form as AntdForm, type FormInstance, Switch } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import { RefreshCw, Save, Trash2 } from 'lucide-react';
@@ -22,6 +14,7 @@ import type { ChannelFormValues, TestResult } from './index';
 import { getDiscordFormItems } from './platforms/discord';
 import { getFeishuFormItems } from './platforms/feishu';
 import { getLarkFormItems } from './platforms/lark';
+import { getQQFormItems } from './platforms/qq';
 import { getTelegramFormItems } from './platforms/telegram';
 
 const prefixCls = 'ant';
@@ -77,6 +70,7 @@ const platformFormItemsMap: Record<
   discord: getDiscordFormItems,
   feishu: getFeishuFormItems,
   lark: getLarkFormItems,
+  qq: getQQFormItems,
   telegram: getTelegramFormItems,
 };
 
@@ -123,21 +117,11 @@ const Body = memo<BodyProps>(
     const getItems = platformFormItemsMap[provider.id];
     const configItems = getItems ? getItems(t, hasConfig, provider) : [];
 
+    const ColorIcon = 'Color' in provider.icon ? (provider.icon as any).Color : provider.icon;
+
     const headerTitle = (
       <Flexbox horizontal align="center" gap={8}>
-        <Flexbox
-          align="center"
-          justify="center"
-          style={{
-            background: provider.color,
-            borderRadius: 10,
-            flexShrink: 0,
-            height: 32,
-            width: 32,
-          }}
-        >
-          <Icon fill="white" icon={provider.icon} size="middle" />
-        </Flexbox>
+        <ColorIcon size={32} />
         {provider.name}
       </Flexbox>
     );

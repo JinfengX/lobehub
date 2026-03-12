@@ -13,6 +13,7 @@ import { isQueueAgentRuntimeEnabled } from '@/server/services/queue/impls';
 import { SystemAgentService } from '@/server/services/systemAgent';
 
 import { formatPrompt as formatPromptUtil } from './formatPrompt';
+import { getPlatformDescriptor } from './platforms';
 import {
   renderError,
   renderFinalReply,
@@ -141,7 +142,18 @@ export class AgentBridgeService {
         thread.adapter.addReaction(parentChannelThreadId(thread.id), message.id, RECEIVED_EMOJI),
       'add eyes',
     );
-    await thread.subscribe();
+
+    // Only subscribe to actual Discord threads, not regular channels.
+    // Subscribing to a regular channel would cause the bot to respond to ALL messages in it.
+    // Discord thread ID format: "discord:guild:channel[:thread]" — the 4th segment is present
+    // only when the message is inside a Discord thread.
+    const isDiscordTopLevelChannel =
+      botContext?.platform === 'discord' &&
+      !(thread.adapter.decodeThreadId(thread.id) as { threadId?: string }).threadId;
+    if (!isDiscordTopLevelChannel) {
+      await thread.subscribe();
+    }
+
     await thread.startTyping();
 
     // Keep typing indicator alive (Telegram's expires after ~5s)
@@ -166,7 +178,8 @@ export class AgentBridgeService {
       });
 
       // Persist topic mapping and channel context in thread state for follow-up messages
-      if (topicId) {
+      // Skip for non-threaded Discord channels (no subscribe = no follow-up)
+      if (topicId && !isDiscordTopLevelChannel) {
         await thread.setState({ channelContext, topicId });
         log('handleMention: stored topicId=%s in thread=%s state', topicId, thread.id);
       }
@@ -507,8 +520,8 @@ export class AgentBridgeService {
                     totalTokens: finalState.usage?.llm?.tokens?.total ?? 0,
                   });
 
-                  // Telegram supports 4096 chars vs Discord's 2000
-                  const charLimit = platform === 'telegram' ? 4000 : undefined;
+                  const descriptor = platform ? getPlatformDescriptor(platform) : undefined;
+                  const charLimit = descriptor?.charLimit;
                   const chunks = splitMessage(finalText, charLimit);
 
                   if (progressMessage) {

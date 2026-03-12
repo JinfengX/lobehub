@@ -53,7 +53,7 @@ vi.mock('@/server/services/systemAgent', () => ({
   })),
 }));
 
-vi.mock('../discordRestApi', () => ({
+vi.mock('../platforms/discord/restApi', () => ({
   DiscordRestApi: vi.fn().mockImplementation(() => ({
     createMessage: mockDiscordCreateMessage,
     editMessage: mockDiscordEditMessage,
@@ -63,7 +63,7 @@ vi.mock('../discordRestApi', () => ({
   })),
 }));
 
-vi.mock('../telegramRestApi', () => ({
+vi.mock('../platforms/telegram/restApi', () => ({
   TelegramRestApi: vi.fn().mockImplementation(() => ({
     editMessageText: mockTelegramEditMessageText,
     removeMessageReaction: mockTelegramRemoveMessageReaction,

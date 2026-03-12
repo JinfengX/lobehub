@@ -4,40 +4,37 @@ export const SkillsApiName = {
   execScript: 'execScript',
   exportFile: 'exportFile',
   readReference: 'readReference',
-  runSkill: 'runSkill',
+  runCommand: 'runCommand',
+  activateSkill: 'activateSkill',
 };
 
-export interface RunSkillParams {
+export interface ActivateSkillParams {
   name: string;
 }
 
-export interface RunSkillState {
+export interface ActivateSkillState {
   description?: string;
   hasResources: boolean;
   id: string;
   name: string;
 }
 
+/**
+ * Activated skill info passed to execScript
+ */
+export interface ExecScriptActivatedSkill {
+  description?: string;
+  id: string;
+  name: string;
+}
+
 export interface ExecScriptParams {
-  command: string;
   /**
-   * Skill configuration context
-   * Used by server to locate skill resources (zipUrl will be resolved server-side)
+   * All activated skills from stepContext
+   * Server will resolve zipUrls for all skills
    */
-  config?: {
-    /**
-     * Current skill's description
-     */
-    description?: string;
-    /**
-     * Current skill's ID
-     */
-    id?: string;
-    /**
-     * Current skill's name
-     */
-    name?: string;
-  };
+  activatedSkills?: ExecScriptActivatedSkill[];
+  command: string;
   description: string;
 }
 
@@ -57,6 +54,11 @@ export interface CommandResult {
   output: string;
   stderr?: string;
   success: boolean;
+}
+
+export interface RunCommandParams {
+  command: string;
+  description?: string;
 }
 
 export interface ReadReferenceParams {

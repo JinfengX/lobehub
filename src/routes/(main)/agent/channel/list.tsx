@@ -92,16 +92,14 @@ const PlatformList = memo<PlatformListProps>(
           <div className={styles.title}>{t('channel.platforms')}</div>
           {providers.map((provider) => {
             const ProviderIcon = provider.icon;
+            const ColorIcon = 'Color' in ProviderIcon ? (ProviderIcon as any).Color : ProviderIcon;
             return (
               <button
                 className={cx(styles.item, activeId === provider.id && 'active')}
                 key={provider.id}
                 onClick={() => onSelect(provider.id)}
               >
-                <ProviderIcon
-                  color={activeId === provider.id ? provider.color : theme.colorTextSecondary}
-                  size={20}
-                />
+                <ColorIcon size={20} />
                 <span style={{ flex: 1 }}>{provider.name}</span>
                 {connectedPlatforms.has(provider.id) && <div className={styles.statusDot} />}
               </button>
