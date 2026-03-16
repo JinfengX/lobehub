@@ -228,7 +228,7 @@
   "plans.fileStorage.title": "Dosya Depolama",
   "plans.fileStorage.tooltip": "Dosya, görsel ve diğer verileri depolamak için dosya depolama",
   "plans.free": "Ücretsiz",
-  "plans.freeTrail": "{{name}} için ücretsiz deneme kaydı, kredi kartı gerekmez",
+  "plans.freeTrial": "{{name}} için ücretsiz deneme kaydı, kredi kartı gerekmez",
   "plans.image.count": "Yaklaşık {{number}} görsel",
   "plans.includes": "Avantajlar şunları içerir:",
   "plans.includesExtra": "{{name}} planındaki tüm avantajlara ek olarak:",

@@ -283,7 +283,7 @@ export default {
   'mcp.details.agents.title': 'Agents Using This Skill',
 
   'mcp.details.connectionType.hybrid.desc':
-    'This service can run locally or in the cloud depending on configuration or usage scenario, offering dual operation capability.',
+    'Runs locally or in the cloud, depending on your setup.',
 
   'mcp.details.connectionType.hybrid.title': 'Hybrid Service',
 
@@ -293,7 +293,7 @@ export default {
   'mcp.details.connectionType.local.title': 'Local Service',
 
   'mcp.details.connectionType.remote.desc':
-    'This server is hosted remotely because it mainly depends on remote services and does not rely on the local environment.',
+    'This server runs in the cloud — no local setup needed.',
 
   'mcp.details.connectionType.remote.title': 'Cloud Service',
 
@@ -412,8 +412,7 @@ export default {
 
   'mcp.details.schema.title': 'Skill Features',
 
-  'mcp.details.schema.tools.desc':
-    'Functional interfaces exposed to large language models (LLM) to perform operations',
+  'mcp.details.schema.tools.desc': 'Tools that let AI models perform actions and operations',
 
   'mcp.details.schema.tools.empty': 'No Tools Available',
 
@@ -512,7 +511,7 @@ export default {
   'mcp.details.scoreLevel.b.title': 'Good',
 
   'mcp.details.scoreLevel.f.desc':
-    'This MCP Server is incomplete or of low quality; users are advised to use it cautiously.',
+    'This MCP Server is incomplete or of low quality. Use with caution.',
 
   'mcp.details.scoreLevel.f.fullTitle': 'Poor Quality',
 
@@ -691,7 +690,7 @@ export default {
   'models.parameterList.docs': 'View Documentation',
 
   'models.parameterList.frequency_penalty.desc':
-    'This setting adjusts the frequency at which the model reuses specific vocabulary that has already appeared in the input. Higher values reduce the likelihood of such repetition, while negative values have the opposite effect. Vocabulary penalties do not increase with frequency of occurrence. Negative values encourage vocabulary reuse.',
+    'Controls how much the model avoids repeating words from the input. Higher values reduce repetition; negative values encourage it.',
 
   'models.parameterList.frequency_penalty.title': 'Frequency Penalty',
 
@@ -726,7 +725,7 @@ export default {
 
   'models.parameterList.type': 'Type',
 
-  'models.providerInfo.apiTooltip': 'LobeHub supports using a custom API key for this provider.',
+  'models.providerInfo.apiTooltip': 'You can use your own API key with this provider.',
 
   'models.providerInfo.input': 'Input Price',
 

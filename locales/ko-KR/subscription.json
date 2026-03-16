@@ -228,7 +228,7 @@
   "plans.fileStorage.title": "파일 저장소",
   "plans.fileStorage.tooltip": "파일, 이미지 및 기타 데이터 저장용 공간",
   "plans.free": "무료",
-  "plans.freeTrail": "{{name}} 무료 체험 등록, 신용카드 불필요",
+  "plans.freeTrial": "{{name}} 무료 체험 등록, 신용카드 불필요",
   "plans.image.count": "약 {{number}}개의 이미지",
   "plans.includes": "포함 혜택:",
   "plans.includesExtra": "{{name}}의 모든 혜택 포함, 추가로:",

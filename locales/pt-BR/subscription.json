@@ -228,7 +228,7 @@
   "plans.fileStorage.title": "Armazenamento de Arquivos",
   "plans.fileStorage.tooltip": "Armazenamento para arquivos, imagens e outros dados",
   "plans.free": "Gratuito",
-  "plans.freeTrail": "Cadastre-se para testar gratuitamente o {{name}}, sem necessidade de cartão de crédito",
+  "plans.freeTrial": "Cadastre-se para testar gratuitamente o {{name}}, sem necessidade de cartão de crédito",
   "plans.image.count": "Aproximadamente {{number}} imagens",
   "plans.includes": "Benefícios incluem:",
   "plans.includesExtra": "Todos os benefícios do {{name}}, mais:",
