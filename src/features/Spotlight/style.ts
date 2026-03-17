@@ -11,32 +11,11 @@ export const useStyles = createStyles(({ css, token }) => ({
     border-radius: 12px;
 
     background: ${token.colorBgContainer};
+  `,
+  dragHandle: css`
+    cursor: default;
+    height: 4px;
 
     -webkit-app-region: drag;
-  `,
-  input: css`
-    flex: 1;
-
-    border: none;
-
-    font-size: 16px;
-    color: ${token.colorText};
-
-    background: transparent;
-    outline: none;
-
-    &::placeholder {
-      color: ${token.colorTextQuaternary};
-    }
-  `,
-  inputArea: css`
-    display: flex;
-    gap: 8px;
-    align-items: center;
-
-    padding-block: 8px;
-    padding-inline: 16px;
-
-    -webkit-app-region: no-drag;
   `,
 }));

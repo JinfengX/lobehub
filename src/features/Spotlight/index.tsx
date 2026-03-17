@@ -1,11 +1,17 @@
-import { memo, useCallback, useState } from 'react';
+import { lazy, memo, Suspense, useCallback } from 'react';
 
-import InputBox from './InputBox';
+import InputArea from './InputArea';
+import { useSpotlightStore } from './store';
 import { useStyles } from './style';
+
+const ChatView = lazy(() => import('./ChatView'));
 
 const SpotlightWindow = memo(() => {
   const { styles } = useStyles();
-  const [inputValue, setInputValue] = useState('');
+  const viewState = useSpotlightStore((s) => s.viewState);
+  const inputValue = useSpotlightStore((s) => s.inputValue);
+  const setInputValue = useSpotlightStore((s) => s.setInputValue);
+  const setViewState = useSpotlightStore((s) => s.setViewState);
 
   const handleHide = useCallback(() => {
     window.electronAPI?.invoke?.('spotlight:hide');
@@ -14,27 +20,39 @@ const SpotlightWindow = memo(() => {
   const handleSubmit = useCallback(
     (value: string) => {
       if (value.startsWith('>')) {
-        // Command mode — TODO: implement
-        console.info('Command:', value.slice(1).trim());
         handleHide();
-      } else if (value.startsWith('@')) {
-        // Search mode — TODO: implement
-        console.info('Search:', value.slice(1).trim());
-      } else {
-        // Chat mode — TODO: implement
-        console.info('Chat:', value);
+        return;
       }
+
+      if (value.startsWith('@')) {
+        return;
+      }
+
+      if (viewState === 'input') {
+        window.electronAPI?.invoke?.('spotlight:resize', { height: 480, width: 680 });
+        setViewState('chat');
+      }
+
+      setInputValue('');
     },
-    [handleHide],
+    [handleHide, viewState, setViewState, setInputValue],
   );
 
   return (
     <div className={styles.container}>
-      <InputBox
+      <div className={styles.dragHandle} />
+
+      {viewState === 'chat' && (
+        <Suspense fallback={null}>
+          <ChatView />
+        </Suspense>
+      )}
+
+      <InputArea
         value={inputValue}
-        onChange={setInputValue}
         onEscape={handleHide}
         onSubmit={handleSubmit}
+        onValueChange={setInputValue}
       />
     </div>
   );
