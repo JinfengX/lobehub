@@ -33,7 +33,7 @@ const isDarwin = getTargetPlatform() === 'darwin';
  */
 export const nativeModules = [
   // macOS-only native modules
-  ...(isDarwin ? ['node-mac-permissions', 'electron-liquid-glass'] : []),
+  ...(isDarwin ? ['node-mac-permissions', 'electron-liquid-glass', '@lobechat/electron-panel'] : []),
   '@napi-rs/canvas',
   // Add more native modules here as needed
 ];
