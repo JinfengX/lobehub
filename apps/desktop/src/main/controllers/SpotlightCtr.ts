@@ -59,7 +59,7 @@ export default class SpotlightCtr extends ControllerModule {
     const cursor = screen.getCursorScreenPoint();
     spotlight.showAt(cursor);
 
-    spotlight.broadcast('spotlightFocus' as any);
+    spotlight.broadcast('spotlightFocus');
   }
 
   @IpcMethod()

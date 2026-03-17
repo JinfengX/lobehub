@@ -1,6 +1,7 @@
 import type { NavigationBroadcastEvents } from './navigation';
 import type { ProtocolBroadcastEvents } from './protocol';
 import type { RemoteServerBroadcastEvents } from './remoteServer';
+import type { SpotlightBroadcastEvents } from './spotlight';
 import type { SystemBroadcastEvents } from './system';
 import type { AutoUpdateBroadcastEvents } from './update';
 
@@ -13,6 +14,7 @@ export interface MainBroadcastEvents
     AutoUpdateBroadcastEvents,
     NavigationBroadcastEvents,
     RemoteServerBroadcastEvents,
+    SpotlightBroadcastEvents,
     SystemBroadcastEvents,
     ProtocolBroadcastEvents {}
 
