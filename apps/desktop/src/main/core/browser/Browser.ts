@@ -172,11 +172,9 @@ export default class Browser {
     // Setup theme management (includes liquid glass lifecycle on macOS Tahoe)
     this.themeManager.attach(browserWindow);
 
-    // Spotlight: panel behavior
+    // Spotlight: hide from Mission Control (Electron-specific, not covered by native panel addon)
     if (this.identifier === 'spotlight') {
-      browserWindow.setAlwaysOnTop(true, 'floating');
       browserWindow.setHiddenInMissionControl(true);
-      browserWindow.setVisibleOnAllWorkspaces(true);
     }
 
     // Setup network interceptors

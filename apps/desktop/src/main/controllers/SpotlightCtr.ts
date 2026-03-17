@@ -1,3 +1,4 @@
+import { Panel } from '@lobechat/electron-panel';
 import { ipcMain, Menu, screen } from 'electron';
 
 import { BrowsersIdentifiers } from '@/appBrowsers';
@@ -18,6 +19,8 @@ export default class SpotlightCtr extends ControllerModule {
   private crashRecoveryAttached = false;
   private menuOpen = false;
   private chatState = false;
+  private panel?: Panel;
+  private panelInitialized = false;
 
   afterAppReady() {
     ipcMain.handle('spotlight:ready', () => {
@@ -66,6 +69,8 @@ export default class SpotlightCtr extends ControllerModule {
     }
 
     await spotlight.whenReady();
+
+    this.initializePanel(spotlight);
 
     const cursor = screen.getCursorScreenPoint();
     spotlight.showAt(cursor);
@@ -153,6 +158,22 @@ export default class SpotlightCtr extends ControllerModule {
       keys: params.keys,
       source: 'spotlight',
     });
+  }
+
+  private initializePanel(
+    spotlight: ReturnType<typeof this.app.browserManager.retrieveByIdentifier>,
+  ) {
+    if (this.panelInitialized) return;
+    this.panelInitialized = true;
+
+    try {
+      const handle = spotlight.browserWindow.getNativeWindowHandle();
+      this.panel = new Panel(handle);
+      this.panel.panelize();
+      this.panel.enableNativeDrag({ height: 44, width: 680, x: 0, y: 0 });
+    } catch (e) {
+      console.error('[SpotlightCtr] Failed to initialize native panel:', e);
+    }
   }
 
   private hideSpotlight() {
