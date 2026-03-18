@@ -32,7 +32,7 @@ export async function createVolcengineImage(
     ['cfg', 'guidance_scale'],
   ]);
 
-  const userInput: Record<string, any> = Object.fromEntries(
+  const userInput: Record<string, unknown> = Object.fromEntries(
     Object.entries(params).map(([key, value]) => [
       paramsMap.get(key as RuntimeImageGenParamsValue) ?? key,
       value,

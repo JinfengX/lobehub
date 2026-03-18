@@ -10,7 +10,7 @@ export interface AgentInitErrorPayload {
 }
 
 export interface ChatCompletionErrorPayload {
-  [key: string]: any;
+  [key: string]: unknown;
   endpoint?: string;
   error: object;
   errorType: ILobeAgentRuntimeErrorType;

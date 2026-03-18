@@ -44,7 +44,7 @@ export async function createWenxinImage(
       }
     }
 
-    const requestBody: Record<string, any> = {
+    const requestBody: Record<string, unknown> = {
       model,
       prompt: params.prompt,
       ...(images !== undefined && { image: images }),

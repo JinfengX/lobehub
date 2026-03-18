@@ -672,7 +672,7 @@ export function renderMemory(step: StepSnapshot): string {
   ];
 
   for (const category of sortedKeys) {
-    const items = (memories as Record<string, any>)[category];
+    const items = (memories as Record<string, unknown>)[category];
 
     if (category === 'persona') {
       const persona = items as any;

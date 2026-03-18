@@ -5,6 +5,6 @@ import { isNil, omitBy } from 'es-toolkit/compat';
  * @param obj The object to clean
  * @returns The cleaned object
  */
-export const cleanObject = <T extends Record<string, any>>(obj: T): T => {
+export const cleanObject = <T extends Record<string, unknown>>(obj: T): T => {
   return omitBy(obj, (value) => isNil(value) || value === '') as T;
 };

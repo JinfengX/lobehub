@@ -85,7 +85,7 @@ export async function parseFormData(c: Context): Promise<FormData> {
       multiples: true,
     });
 
-    const { fields, files } = await new Promise<{ fields: Record<string, any>; files: any }>(
+    const { fields, files } = await new Promise<{ fields: Record<string, unknown>; files: any }>(
       (resolve, reject) => {
         form.parse(fakeReq, (err: any, fds: any, fls: any) => {
           if (err) return reject(err);

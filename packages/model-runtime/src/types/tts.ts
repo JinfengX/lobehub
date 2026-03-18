@@ -5,7 +5,7 @@ export interface TextToSpeechPayload {
 }
 
 export interface TextToSpeechOptions {
-  headers?: Record<string, any>;
+  headers?: Record<string, unknown>;
   signal?: AbortSignal;
   /**
    * userId for the embeddings

@@ -44,7 +44,7 @@ export const params = {
       // Check if model uses enable_thinking parameter (without clear_thinking)
       const useEnableThinking = model && enableThinkingModels.has(model);
 
-      const chatTemplateKwargs: Record<string, any> = {};
+      const chatTemplateKwargs: Record<string, unknown> = {};
 
       if (thinkingFlag !== undefined) {
         if (usePreservedThinking) {

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { renderPlaceholderTemplate } from '@lobechat/context-engine';
 
 interface TracePayload {
-  agentCalls?: Record<string, any>;
+  agentCalls?: Record<string, unknown>;
   contexts?: {
     trimmed?: {
       retrievedContexts?: string[];

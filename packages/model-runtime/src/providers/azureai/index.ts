@@ -129,7 +129,7 @@ export class LobeAzureAI implements LobeRuntimeAI {
         );
       }
     } catch (e) {
-      let error = e as { [key: string]: any; code: string; message: string };
+      let error = e as { [key: string]: unknown; code: string; message: string };
 
       if (error.code) {
         switch (error.code) {
@@ -139,10 +139,10 @@ export class LobeAzureAI implements LobeRuntimeAI {
         }
       } else {
         error = {
-          cause: error.cause,
-          message: error.message,
-          name: error.name,
-        } as any;
+          cause: (e as any).cause,
+          message: (e as any).message,
+          name: (e as any).name,
+        } as { [key: string]: unknown; code: string; message: string };
       }
 
       const errorType = error.code

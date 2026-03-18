@@ -60,7 +60,7 @@ export abstract class LobeOpenAICompatibleRuntime {
   abstract generateObject(
     payload: GenerateObjectPayload,
     options?: GenerateObjectOptions,
-  ): Promise<Record<string, any>>;
+  ): Promise<Record<string, unknown>>;
 
   abstract models(): Promise<AIBaseModelCard[]>;
 

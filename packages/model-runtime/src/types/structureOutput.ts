@@ -13,7 +13,7 @@ export interface GenerateObjectSchema {
   name: string;
   schema: {
     additionalProperties?: boolean;
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
     required?: string[];
     type: 'object';
   };
@@ -32,7 +32,7 @@ export interface GenerateObjectOptions {
   /**
    * response headers
    */
-  headers?: Record<string, any>;
+  headers?: Record<string, unknown>;
 
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;

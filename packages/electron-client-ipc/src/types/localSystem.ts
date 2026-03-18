@@ -8,7 +8,7 @@ export interface LocalFileItem {
   lastAccessTime: Date;
   // Spotlight specific metadata
   metadata?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
   modifiedTime: Date;
   name: string;

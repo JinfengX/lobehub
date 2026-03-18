@@ -507,10 +507,10 @@ export class SessionModel {
 
     // First process the params field: undefined means delete, null means disable flag
     const existingParams = session.agent.params ?? {};
-    const updatedParams: Record<string, any> = { ...existingParams };
+    const updatedParams: Record<string, unknown> = { ...existingParams };
 
     if (data.params) {
-      const incomingParams = data.params as Record<string, any>;
+      const incomingParams = data.params as Record<string, unknown>;
       Object.keys(incomingParams).forEach((key) => {
         const incomingValue = incomingParams[key];
 
@@ -535,7 +535,7 @@ export class SessionModel {
 
     // Final cleanup: ensure no undefined or null values enter the database
     if (mergedValue.params) {
-      const params = mergedValue.params as Record<string, any>;
+      const params = mergedValue.params as Record<string, unknown>;
       Object.keys(params).forEach((key) => {
         if (params[key] === undefined) {
           delete params[key];

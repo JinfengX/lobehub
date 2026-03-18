@@ -30,7 +30,7 @@ interface FirecrawlResults {
   changeTracking?: {
     changeStatus?: string;
     diff?: string;
-    json?: Record<string, any>;
+    json?: Record<string, unknown>;
     previousScrapeAt?: string;
     visibility?: string;
   };

@@ -20,16 +20,16 @@ interface PreparedMessage {
   agentId: string;
   content: string;
   createdAt: Date;
-  error?: Record<string, any> | null;
+  error?: Record<string, unknown> | null;
   id: string;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   model?: string | null;
   parentId: string | null;
   provider?: string | null;
-  reasoning?: Record<string, any> | null;
+  reasoning?: Record<string, unknown> | null;
   role: string;
-  search?: Record<string, any> | null;
-  tools?: Record<string, any>[] | null;
+  search?: Record<string, unknown> | null;
+  tools?: Record<string, unknown>[] | null;
   topicId: string;
   traceId?: string | null;
   updatedAt: Date;
@@ -39,10 +39,10 @@ interface PreparedMessage {
 interface PreparedMessagePlugin {
   apiName?: string | null;
   arguments?: string | null;
-  error?: Record<string, any> | null;
+  error?: Record<string, unknown> | null;
   id: string;
   identifier?: string | null;
-  state?: Record<string, any> | null;
+  state?: Record<string, unknown> | null;
   toolCallId?: string | null;
   type?: string | null;
   userId: string;
@@ -208,7 +208,7 @@ export class TopicImporterRepo {
 
       // If message has plugin data (tool messages), prepare plugin record
       if (msg.plugin || msg.pluginState || msg.pluginError || msg.tool_call_id) {
-        const plugin = msg.plugin as Record<string, any> | undefined;
+        const plugin = msg.plugin as Record<string, unknown> | undefined;
         preparedPlugins.push({
           apiName: plugin?.apiName || null,
           arguments: plugin?.arguments || null,

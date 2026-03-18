@@ -9,7 +9,7 @@ export type ChatResponseFormat =
   | {
       json_schema: {
         name: string;
-        schema: Record<string, any>;
+        schema: Record<string, unknown>;
         strict?: boolean;
       };
       type: 'json_schema';
@@ -173,13 +173,13 @@ export interface ChatMethodOptions {
   /**
    * response headers
    */
-  headers?: Record<string, any>;
+  headers?: Record<string, unknown>;
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;
   /**
    * send the request to the ai api endpoint
    */
-  requestHeaders?: Record<string, any>;
+  requestHeaders?: Record<string, unknown>;
   signal?: AbortSignal;
   /**
    * userId for the chat completion
@@ -206,7 +206,7 @@ export interface ChatCompletionFunctions {
    * @memberof ChatCompletionFunctions
    */
   parameters?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

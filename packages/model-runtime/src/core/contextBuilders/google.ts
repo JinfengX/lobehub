@@ -259,15 +259,15 @@ const UNSUPPORTED_SCHEMA_KEYS = new Set(['examples', 'default']);
  * Google's API doesn't support certain JSON Schema keywords like 'const'
  * This function recursively processes the schema and converts unsupported keywords
  */
-const sanitizeSchemaForGoogle = (schema: Record<string, any>): Record<string, any> => {
+const sanitizeSchemaForGoogle = (schema: Record<string, unknown>): Record<string, unknown> => {
   if (!schema || typeof schema !== 'object') return schema;
 
   // Handle arrays
   if (Array.isArray(schema)) {
-    return schema.map((item) => sanitizeSchemaForGoogle(item));
+    return schema.map((item) => sanitizeSchemaForGoogle(item as Record<string, unknown>));
   }
 
-  const result: Record<string, any> = {};
+  const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(schema)) {
     // Strip unsupported JSON Schema keywords (e.g. examples, default, $schema)

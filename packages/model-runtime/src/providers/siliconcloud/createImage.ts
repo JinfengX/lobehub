@@ -52,7 +52,7 @@ export async function createSiliconCloudImage(
     ['steps', 'num_inference_steps'],
   ]);
 
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     model,
     prompt: params.prompt,
   };

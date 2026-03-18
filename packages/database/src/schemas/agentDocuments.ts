@@ -111,7 +111,7 @@ export const agentDocuments = pgTable(
      * Canonical behavior config for context/retrieval policy.
      * Keep extensible fields here.
      */
-    policy: jsonb('policy').$type<Record<string, any>>(),
+    policy: jsonb('policy').$type<Record<string, unknown>>(),
     /**
      * Indexed projection of policy.context.position for fast filtering/sorting.
      */

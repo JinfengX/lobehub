@@ -459,7 +459,7 @@ const getModelLocalEnableConfig = (
  * Common logic for processing model cards
  */
 const processModelCard = (
-  model: { [key: string]: any; id: string },
+  model: { [key: string]: unknown; id: string },
   config: ModelProcessorConfig,
   knownModel?: any,
   options?: { includeKnownExtendParams?: boolean; includeSearchSettings?: boolean },

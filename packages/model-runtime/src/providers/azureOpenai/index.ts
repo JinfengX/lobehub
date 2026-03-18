@@ -146,7 +146,7 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
 
     try {
       // Clone params and remap imageUrls/imageUrl -> image
-      const userInput: Record<string, any> = { ...params };
+      const userInput: Record<string, unknown> = { ...params };
 
       // Convert imageUrls to 'image' for edit API
       if (Array.isArray(userInput.imageUrls) && userInput.imageUrls.length > 0) {
@@ -251,7 +251,7 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
   }
 
   protected handleError(e: any, model?: string): never {
-    let error = e as { [key: string]: any; code: string; message: string };
+    let error = e as { [key: string]: unknown; code: string; message: string };
 
     if (error.code) {
       switch (error.code) {
@@ -261,10 +261,10 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
       }
     } else {
       error = {
-        cause: error.cause,
-        message: error.message,
-        name: error.name,
-      } as any;
+        cause: (e as any).cause,
+        message: (e as any).message,
+        name: (e as any).name,
+      } as { [key: string]: unknown; code: string; message: string };
     }
 
     const errorType = error.code

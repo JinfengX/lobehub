@@ -2,10 +2,7 @@ import * as XLSX from 'xlsx';
 
 import type { ParseOptions, ParseResult } from '../types';
 
-export function parseXLSX(
-  data: Buffer | Uint8Array,
-  options?: ParseOptions,
-): ParseResult {
+export function parseXLSX(data: Buffer | Uint8Array, options?: ParseOptions): ParseResult {
   const workbook = XLSX.read(data, { type: 'array' });
 
   // Select sheet
@@ -23,7 +20,7 @@ export function parseXLSX(
     return { format: 'xlsx', headers: [], metadata: { sheetName }, rows: [], totalCount: 0 };
   }
 
-  const allRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, {
+  const allRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
     defval: '',
     raw: false,
   });

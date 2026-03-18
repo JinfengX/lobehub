@@ -23,7 +23,7 @@ import { type BuiltinIntervention } from '@lobechat/types';
  * Organized by toolset (identifier) -> API name
  * Only register APIs that have custom intervention UI
  */
-export const BuiltinToolInterventions: Record<string, Record<string, any>> = {
+export const BuiltinToolInterventions: Record<string, Record<string, unknown>> = {
   [AgentBuilderManifest.identifier]: AgentBuilderInterventions,
   [CloudSandboxManifest.identifier]: CloudSandboxInterventions,
   [GroupManagementManifest.identifier]: GroupManagementInterventions,

@@ -21,9 +21,9 @@ export interface BflAsyncWebhookResponse {
 }
 
 export interface BflResultResponse {
-  details?: Record<string, any> | null;
+  details?: Record<string, unknown> | null;
   id: string;
-  preview?: Record<string, any> | null;
+  preview?: Record<string, unknown> | null;
   progress?: number | null;
   result?: any;
   status: BflStatusResponse;

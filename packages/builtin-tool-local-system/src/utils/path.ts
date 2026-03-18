@@ -50,7 +50,7 @@ export const resolveArgsWithScope = <T extends { scope?: string }>(
   fallbackScope?: string,
 ): T => {
   const scope = args.scope || fallbackScope;
-  const currentPath = (args as Record<string, any>)[pathField] as string | undefined;
+  const currentPath = (args as Record<string, unknown>)[pathField] as string | undefined;
   const resolved = resolvePathWithScope(currentPath, scope);
   if (resolved === currentPath) return args;
   return { ...args, [pathField]: resolved };

@@ -98,7 +98,7 @@ export function parse(messages: Message[], messageGroups?: MessageGroupMetadata[
       processedMessage.tools.length > 0 &&
       processedMessage.metadata
     ) {
-      const cleanedMetadata: Record<string, any> = {};
+      const cleanedMetadata: Record<string, unknown> = {};
       Object.entries(processedMessage.metadata).forEach(([key, value]) => {
         if (usagePerformanceFields.has(key)) {
           cleanedMetadata[key] = value;

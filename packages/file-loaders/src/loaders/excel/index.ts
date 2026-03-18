@@ -12,7 +12,7 @@ const log = debug('file-loaders:excel');
  * Converts sheet data (array of objects) to a Markdown table string.
  * Handles empty sheets and escapes pipe characters.
  */
-function sheetToMarkdownTable(jsonData: Record<string, any>[]): string {
+function sheetToMarkdownTable(jsonData: Record<string, unknown>[]): string {
   log('Converting sheet data to Markdown table, rows:', jsonData?.length || 0);
   if (!jsonData || jsonData.length === 0) {
     log('Sheet is empty, returning placeholder message');
@@ -71,7 +71,7 @@ export class ExcelLoader implements FileLoaderInterface {
         log(`Processing sheet: ${sheetName}`);
         const worksheet = workbook.Sheets[sheetName];
         // Use sheet_to_json to get array of objects for our custom markdown function
-        const jsonData = xlsx.utils.sheet_to_json<Record<string, any>>(worksheet, {
+        const jsonData = xlsx.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
           // Get formatted strings, not raw values
           defval: '',
           raw: false, // Use empty string for blank cells

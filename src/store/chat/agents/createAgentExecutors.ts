@@ -22,15 +22,15 @@ import { calculateMessageTokens, UsageCounter } from '@lobechat/agent-runtime';
 import { isDesktop } from '@lobechat/const';
 import type { ToolsEngine } from '@lobechat/context-engine';
 import { chainCompressContext } from '@lobechat/prompts';
-import {
+import type {
   type ChatToolPayload,
   type ConversationContext,
   type CreateMessageParams,
+  MessageMetadata,
   type MessageToolCall,
   type ModelUsage,
   TraceNameMap,
 } from '@lobechat/types';
-import type { MessageMetadata } from '@lobechat/types';
 import { dedupeBy } from '@lobechat/utils';
 import debug from 'debug';
 import pMap from 'p-map';

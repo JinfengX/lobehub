@@ -95,7 +95,7 @@ interface LobeGoogleAIParams {
   apiKey?: string;
   baseURL?: string;
   client?: GoogleGenAI;
-  defaultHeaders?: Record<string, any>;
+  defaultHeaders?: Record<string, unknown>;
   id?: string;
   isVertexAi?: boolean;
 }

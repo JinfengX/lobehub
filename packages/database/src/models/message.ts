@@ -1361,7 +1361,7 @@ export class MessageModel {
         }
 
         // 2. Handle metadata merge if provided
-        let mergedMetadata: Record<string, any> | undefined;
+        let mergedMetadata: Record<string, unknown> | undefined;
         if (metadata) {
           const [existingMessage] = await trx
             .select({ metadata: messages.metadata })
@@ -1389,7 +1389,7 @@ export class MessageModel {
     }
   };
 
-  updateMetadata = async (id: string, metadata: Record<string, any>) => {
+  updateMetadata = async (id: string, metadata: Record<string, unknown>) => {
     const item = await this.db.query.messages.findFirst({
       where: and(eq(messages.id, id), eq(messages.userId, this.userId)),
     });
@@ -1402,7 +1402,7 @@ export class MessageModel {
       .where(and(eq(messages.userId, this.userId), eq(messages.id, id)));
   };
 
-  updatePluginState = async (id: string, state: Record<string, any>): Promise<void> => {
+  updatePluginState = async (id: string, state: Record<string, unknown>): Promise<void> => {
     const item = await this.db.query.messagePlugins.findFirst({
       where: eq(messagePlugins.id, id),
     });
@@ -1431,9 +1431,9 @@ export class MessageModel {
     id: string,
     params: {
       content?: string;
-      metadata?: Record<string, any>;
-      pluginError?: any;
-      pluginState?: Record<string, any>;
+      metadata?: Record<string, unknown>;
+      pluginError?: unknown;
+      pluginState?: Record<string, unknown>;
     },
   ): Promise<{ success: boolean }> => {
     const { content, metadata, pluginState, pluginError } = params;
@@ -1442,7 +1442,7 @@ export class MessageModel {
       await this.db.transaction(async (trx) => {
         // Update messages table (content, metadata)
         if (content !== undefined || metadata !== undefined) {
-          const messageUpdateData: Record<string, any> = {};
+          const messageUpdateData: Record<string, unknown> = {};
 
           if (content !== undefined) {
             messageUpdateData.content = content;
@@ -1471,7 +1471,7 @@ export class MessageModel {
           });
 
           if (pluginItem) {
-            const pluginUpdateData: Record<string, any> = {};
+            const pluginUpdateData: Record<string, unknown> = {};
 
             if (pluginState !== undefined) {
               pluginUpdateData.state = merge(pluginItem.state || {}, pluginState);

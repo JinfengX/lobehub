@@ -14,6 +14,6 @@ export interface ParseResult {
   metadata?: {
     sheetName?: string;
   };
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   totalCount: number;
 }

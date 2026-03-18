@@ -33,7 +33,7 @@ export interface FileDocument {
     /**
      * Allows adding other file-level metadata.
      */
-    [key: string]: any;
+    [key: string]: unknown;
     /**
      * Document author (if available).
      */
@@ -98,7 +98,7 @@ export interface DocumentPage {
     /**
      * Allows adding other page/chunk-specific metadata.
      */
-    [key: string]: any;
+    [key: string]: unknown;
 
     /**
      * If the original file unit is further divided into chunks, this is the index of the current chunk.
@@ -189,7 +189,7 @@ export interface FileLoaderInterface {
    */
   aggregateContent: (pages: DocumentPage[]) => Promise<string>;
 
-  attachDocumentMetadata?: (filePath: string) => Promise<Record<string, any>>;
+  attachDocumentMetadata?: (filePath: string) => Promise<Record<string, unknown>>;
 
   /**
    * Loads file content based on the file path and splits it into logical pages/chunks.

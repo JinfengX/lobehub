@@ -66,7 +66,7 @@ export const documents = pgTable(
     totalLineCount: integer('total_line_count').notNull(),
 
     // Metadata
-    metadata: jsonb('metadata').$type<Record<string, any>>(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
 
     // Page/chunk data
     pages: jsonb('pages').$type<LobeDocumentPage[]>(),
@@ -95,7 +95,7 @@ export const documents = pgTable(
       .notNull(),
     clientId: text('client_id'),
 
-    editorData: jsonb('editor_data').$type<Record<string, any>>(),
+    editorData: jsonb('editor_data').$type<Record<string, unknown>>(),
 
     slug: varchar('slug', { length: 255 }).$defaultFn(() => randomSlug(3)),
 

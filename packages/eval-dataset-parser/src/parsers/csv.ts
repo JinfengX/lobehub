@@ -3,7 +3,7 @@ import * as Papa from 'papaparse';
 import type { ParseOptions, ParseResult } from '../types';
 
 export function parseCSV(content: string, options?: ParseOptions): ParseResult {
-  const result = Papa.parse<Record<string, any>>(content, {
+  const result = Papa.parse<Record<string, unknown>>(content, {
     delimiter: options?.csvDelimiter,
     dynamicTyping: true,
     header: true,

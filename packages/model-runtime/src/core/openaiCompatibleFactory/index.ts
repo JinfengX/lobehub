@@ -67,7 +67,7 @@ export const CHAT_MODELS_BLOCK_LIST = [
   'dall-e',
 ];
 
-type ConstructorOptions<T extends Record<string, any> = any> = ClientOptions & T;
+type ConstructorOptions<T extends Record<string, any> = Record<string, never>> = ClientOptions & T;
 export type CreateImageOptions = Omit<ClientOptions, 'apiKey'> & {
   apiKey: string;
   provider: string;
@@ -78,7 +78,7 @@ export type CreateVideoOptions = Omit<ClientOptions, 'apiKey'> & {
   provider: string;
 };
 
-export interface CustomClientOptions<T extends Record<string, any> = any> {
+export interface CustomClientOptions<T extends Record<string, any> = Record<string, never>> {
   createChatCompletionStream?: (
     client: any,
     payload: ChatStreamPayload,
@@ -87,7 +87,9 @@ export interface CustomClientOptions<T extends Record<string, any> = any> {
   createClient?: (options: ConstructorOptions<T>) => any;
 }
 
-export interface OpenAICompatibleFactoryOptions<T extends Record<string, any> = any> {
+export interface OpenAICompatibleFactoryOptions<
+  T extends Record<string, any> = Record<string, never>,
+> {
   apiKey?: string;
   baseURL?: string;
   chatCompletion?: {
@@ -179,7 +181,9 @@ export interface OpenAICompatibleFactoryOptions<T extends Record<string, any> = 
   };
 }
 
-export const createOpenAICompatibleRuntime = <T extends Record<string, any> = any>({
+export const createOpenAICompatibleRuntime = <
+  T extends Record<string, any> = Record<string, never>,
+>({
   provider,
   baseURL: DEFAULT_BASE_URL,
   apiKey: DEFAULT_API_KEY,
@@ -209,7 +213,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
     baseURL!: string;
     protected _options: ConstructorOptions<T>;
 
-    constructor(options: ClientOptions & Record<string, any> = {}) {
+    constructor(options: ClientOptions & Record<string, unknown> = {}) {
       const _options = {
         ...options,
         apiKey: options.apiKey?.trim() || DEFAULT_API_KEY,
@@ -396,8 +400,8 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
 
         if (targetBaseURL !== this.baseURL) {
           const restOptions = {
-            ...(this._options as ConstructorOptions<T> & Record<string, any>),
-          } as Record<string, any>;
+            ...(this._options as ConstructorOptions<T> & Record<string, unknown>),
+          } as Record<string, unknown>;
           const optionApiKey = restOptions.apiKey;
           delete restOptions.apiKey;
           delete restOptions.baseURL;
@@ -415,7 +419,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
             baseURL: targetBaseURL,
             ...constructorOptions,
             ...restOptions,
-          } as ConstructorOptions<T> & Record<string, any>;
+          } as ConstructorOptions<T> & Record<string, unknown>;
 
           this._options = nextOptions;
 

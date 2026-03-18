@@ -15,13 +15,13 @@ import { type BuiltinPlaceholder } from '@lobechat/types';
  * Builtin tools placeholders registry
  * Organized by toolset (identifier) -> API name
  */
-export const BuiltinToolPlaceholders: Record<string, Record<string, any>> = {
+export const BuiltinToolPlaceholders: Record<string, Record<string, unknown>> = {
   [LocalSystemIdentifier]: {
     [LocalSystemApiName.searchLocalFiles]: LocalSystemSearchFilesPlaceholder,
     [LocalSystemApiName.listLocalFiles]: LocalSystemListFilesPlaceholder,
   },
-  [NotebookIdentifier]: NotebookPlaceholders as Record<string, any>,
-  [WebBrowsingManifest.identifier]: WebBrowsingPlaceholders as Record<string, any>,
+  [NotebookIdentifier]: NotebookPlaceholders as Record<string, unknown>,
+  [WebBrowsingManifest.identifier]: WebBrowsingPlaceholders as Record<string, unknown>,
 };
 
 /**

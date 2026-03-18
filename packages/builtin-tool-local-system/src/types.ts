@@ -1,4 +1,4 @@
-import  {
+import {
   type GetCommandOutputResult,
   type GlobFilesResult,
   type GrepContentResult,
@@ -32,7 +32,7 @@ export interface FileResult {
   isDirectory: boolean;
   lastAccessTime: Date;
   metadata?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
   modifiedTime: Date;
   name: string;

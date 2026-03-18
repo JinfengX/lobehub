@@ -575,7 +575,7 @@ export class ResponsesService extends BaseService {
     status: ResponseObject['status'];
     usage?: ResponseUsage;
   }): ResponseObject {
-    const p = opts.params as Record<string, any>;
+    const p = opts.params as Record<string, unknown>;
     return {
       background: p.background ?? false,
       completed_at: opts.completedAt ?? null,

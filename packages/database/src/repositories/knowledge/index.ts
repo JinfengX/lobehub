@@ -11,11 +11,11 @@ export interface KnowledgeItem {
   chunkTaskId?: string | null;
   content?: string | null;
   createdAt: Date;
-  editorData?: Record<string, any> | null;
+  editorData?: Record<string, unknown> | null;
   embeddingTaskId?: string | null;
   fileType: string;
   id: string;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   name: string;
   size: number;
   slug?: string | null;

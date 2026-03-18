@@ -68,11 +68,11 @@ async function createQwenImageTask(
   const url = `${baseUrl}/api/v1/services/aigc/${endpoint}/image-synthesis`;
   log('Creating %s task with model: %s, endpoint: %s', endpoint, model, url);
 
-  const input: Record<string, any> = {
+  const input: Record<string, unknown> = {
     prompt: params.prompt,
   };
 
-  const parameters: Record<string, any> = {
+  const parameters: Record<string, unknown> = {
     n: 1,
     ...(typeof params.seed === 'number' ? { seed: params.seed } : {}),
     ...(params.width && params.height

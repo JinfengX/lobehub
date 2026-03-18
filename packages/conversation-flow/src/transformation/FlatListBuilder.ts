@@ -21,7 +21,7 @@ export class FlatListBuilder {
     private branchResolver: BranchResolver,
     private messageCollector: MessageCollector,
     private messageTransformer: MessageTransformer,
-  ) { }
+  ) {}
 
   /**
    * Generate flatList from messages array
@@ -793,7 +793,7 @@ export class FlatListBuilder {
       const msgPerformance = assistant.performance || metaPerformance;
 
       // Extract non-usage/performance metadata fields
-      const otherMetadata: Record<string, any> = {};
+      const otherMetadata: Record<string, unknown> = {};
       if (assistant.metadata) {
         const usagePerformanceFields = new Set([
           'acceptedPredictionTokens',
@@ -851,7 +851,7 @@ export class FlatListBuilder {
     const aggregated = this.messageTransformer.aggregateMetadata(children);
 
     // Collect all non-usage/performance metadata from all children
-    const groupMetadata: Record<string, any> = {};
+    const groupMetadata: Record<string, unknown> = {};
     children.forEach((child) => {
       if ((child as any).metadata) {
         Object.assign(groupMetadata, (child as any).metadata);
@@ -936,7 +936,7 @@ export class FlatListBuilder {
     const msgPerformance = message.performance || metaPerformance;
 
     // Extract non-usage/performance metadata fields
-    const otherMetadata: Record<string, any> = {};
+    const otherMetadata: Record<string, unknown> = {};
     if (message.metadata) {
       const usagePerformanceFields = new Set([
         'acceptedPredictionTokens',

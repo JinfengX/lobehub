@@ -30,7 +30,7 @@ export const agentSkills = pgTable(
 
     // Content and editor state
     content: text('content'),
-    editorData: jsonb('editor_data').$type<Record<string, any>>(),
+    editorData: jsonb('editor_data').$type<Record<string, unknown>>(),
 
     // Resource mapping: Record<VirtualPath, SkillResourceMeta>
     resources: jsonb('resources').$type<Record<string, SkillResourceMeta>>().default({}),

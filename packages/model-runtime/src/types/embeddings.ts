@@ -19,7 +19,7 @@ export interface EmbeddingsPayload {
 }
 
 export interface EmbeddingsOptions {
-  headers?: Record<string, any>;
+  headers?: Record<string, unknown>;
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;
   onUsage?: (usage: ModelUsage) => void | Promise<void>;

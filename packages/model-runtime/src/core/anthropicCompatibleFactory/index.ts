@@ -37,17 +37,19 @@ import { handleAnthropicError } from './handleAnthropicError';
 import { resolveCacheTTL } from './resolveCacheTTL';
 import { resolveMaxTokens } from './resolveMaxTokens';
 
-type ConstructorOptions<T extends Record<string, any> = any> = ClientOptions & T;
+type ConstructorOptions<T extends Record<string, any> = Record<string, never>> = ClientOptions & T;
 
 type AnthropicTools = Anthropic.Tool | Anthropic.WebSearchTool20250305;
 
 export const DEFAULT_ANTHROPIC_BASE_URL = 'https://api.anthropic.com';
 
-export interface CustomClientOptions<T extends Record<string, any> = any> {
+export interface CustomClientOptions<T extends Record<string, any> = Record<string, never>> {
   createClient?: (options: ConstructorOptions<T>) => Anthropic;
 }
 
-export interface AnthropicCompatibleFactoryOptions<T extends Record<string, any> = any> {
+export interface AnthropicCompatibleFactoryOptions<
+  T extends Record<string, any> = Record<string, never>,
+> {
   apiKey?: string;
   baseURL?: string;
   chatCompletion?: {
@@ -100,7 +102,9 @@ export interface AnthropicCompatibleFactoryOptions<T extends Record<string, any>
   provider: string;
 }
 
-export interface AnthropicCompatibleParamsInput<T extends Record<string, any> = any> extends Omit<
+export interface AnthropicCompatibleParamsInput<
+  T extends Record<string, any> = Record<string, never>,
+> extends Omit<
   AnthropicCompatibleFactoryOptions<T>,
   'chatCompletion' | 'customClient' | 'generateObject' | 'models'
 > {
@@ -242,7 +246,7 @@ export const resolveDefaultAnthropicPricingOptions = (
 /**
  * Create Anthropic SDK client with optional beta headers.
  */
-export const createDefaultAnthropicClient = <T extends Record<string, any> = any>(
+export const createDefaultAnthropicClient = <T extends Record<string, any> = Record<string, never>>(
   options: ConstructorOptions<T>,
 ) => {
   const betaHeaders = process.env.ANTHROPIC_BETA_HEADERS;
@@ -258,7 +262,7 @@ export const createDefaultAnthropicClient = <T extends Record<string, any> = any
 /**
  * Default Anthropic error handler with desensitized endpoint.
  */
-export const handleDefaultAnthropicError = <T extends Record<string, any> = any>(
+export const handleDefaultAnthropicError = <T extends Record<string, any> = Record<string, never>>(
   error: any,
   options: ConstructorOptions<T>,
 ): Omit<ChatCompletionErrorPayload, 'provider'> => {
@@ -363,7 +367,9 @@ export const createDefaultAnthropicModels = async ({
 /**
  * Build provider params by merging overrides with Anthropic defaults.
  */
-export const createAnthropicCompatibleParams = <T extends Record<string, any> = any>(
+export const createAnthropicCompatibleParams = <
+  T extends Record<string, any> = Record<string, never>,
+>(
   options: AnthropicCompatibleParamsInput<T>,
 ): AnthropicCompatibleFactoryOptions<T> => {
   const {
@@ -390,7 +396,9 @@ export const createAnthropicCompatibleParams = <T extends Record<string, any> = 
   } as AnthropicCompatibleFactoryOptions<T>;
 };
 
-export const createAnthropicCompatibleRuntime = <T extends Record<string, any> = any>({
+export const createAnthropicCompatibleRuntime = <
+  T extends Record<string, any> = Record<string, never>,
+>({
   provider,
   baseURL: DEFAULT_BASE_URL = DEFAULT_ANTHROPIC_BASE_URL,
   apiKey: DEFAULT_API_KEY,
@@ -416,7 +424,7 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
     baseURL!: string;
     protected _options: ConstructorOptions<T>;
 
-    constructor(options: ClientOptions & Record<string, any> = {}) {
+    constructor(options: ClientOptions & Record<string, unknown> = {}) {
       const apiKey = typeof options.apiKey === 'string' ? options.apiKey.trim() : options.apiKey;
       const baseURL =
         typeof options.baseURL === 'string' ? options.baseURL.trim() : options.baseURL;

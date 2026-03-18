@@ -46,7 +46,10 @@ class ClientSandboxService implements ISandboxService {
     this.userId = userId;
   }
 
-  async callTool(toolName: string, params: Record<string, any>): Promise<SandboxCallToolResult> {
+  async callTool(
+    toolName: string,
+    params: Record<string, unknown>,
+  ): Promise<SandboxCallToolResult> {
     return cloudSandboxService.callTool(toolName, params, {
       topicId: this.topicId,
       userId: this.userId,
