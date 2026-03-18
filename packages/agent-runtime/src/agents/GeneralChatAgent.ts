@@ -14,6 +14,7 @@ import {
   type AgentInstructionCompressContext,
   type AgentRuntimeContext,
   type AgentState,
+  type AgentStateMetadata,
   type GeneralAgentCallingToolInstructionPayload,
   type GeneralAgentCallLLMInstructionPayload,
   type GeneralAgentCallLLMResultPayload,
@@ -102,7 +103,7 @@ export class GeneralChatAgent implements Agent {
   private resolveDynamicPolicy(
     config: ExtendedHumanInterventionConfig | undefined,
     toolArgs: ToolArguments,
-    metadata?: Record<string, unknown>,
+    metadata?: AgentStateMetadata,
   ): HumanInterventionPolicy | undefined {
     if (!this.isDynamicInterventionConfig(config)) {
       return undefined;
