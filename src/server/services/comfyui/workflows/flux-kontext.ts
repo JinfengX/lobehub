@@ -222,7 +222,7 @@ export async function buildFluxKontextWorkflow(
   }
 
   // Process prompt splitting early in workflow construction
-  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt);
+  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt ?? '');
 
   // Set prompt values directly to workflow nodes instead of using PromptBuilder input mapping
   workflow['5'].inputs.clip_l = clipLPrompt;

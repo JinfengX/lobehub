@@ -1,4 +1,4 @@
-import type { ChatToolPayload } from '@lobechat/types';
+import type { ChatToolPayload, UIChatMessage } from '@lobechat/types';
 import pMap from 'p-map';
 
 import type {
@@ -389,22 +389,37 @@ export class AgentRuntime {
    * @returns Complete AgentState with defaults filled in
    */
   static createInitialState(
-    partialState?: Partial<AgentState> & { operationId: string },
+    partialState?: Omit<Partial<AgentState>, 'messages'> & {
+      messages?: Array<Partial<UIChatMessage> & Pick<UIChatMessage, 'content' | 'role'>>;
+      operationId: string;
+    },
   ): AgentState {
+    const { messages: initialMessages, ...restState } = partialState || { operationId: '' };
     const now = new Date().toISOString();
+    const nowMs = Date.now();
+    const normalizedMessages =
+      initialMessages?.map(
+        (message, index) =>
+          ({
+            createdAt: nowMs,
+            id: `message-${index + 1}`,
+            updatedAt: nowMs,
+            ...message,
+          }) as UIChatMessage,
+      ) ?? [];
 
     return {
       cost: AgentRuntime.createDefaultCost(),
       // Default values
       createdAt: now,
       lastModified: now,
-      messages: [],
+      messages: normalizedMessages,
       status: 'idle',
       stepCount: 0,
       toolManifestMap: {},
       usage: AgentRuntime.createDefaultUsage(),
       // User provided values override defaults
-      ...(partialState || { operationId: '' }),
+      ...restState,
     };
   }
 
@@ -518,11 +533,15 @@ export class AgentRuntime {
 
       const args = JSON.parse(toolArgs);
       const result = await handler(args);
+      const messageTimestamp = Date.now();
 
       newState.messages.push({
         content: JSON.stringify(result),
+        createdAt: messageTimestamp,
+        id: `tool-${toolId}`,
         role: 'tool',
         tool_call_id: toolId,
+        updatedAt: messageTimestamp,
       });
 
       events.push({ id: toolId, result, type: 'tool_result' });

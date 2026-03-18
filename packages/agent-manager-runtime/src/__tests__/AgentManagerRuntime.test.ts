@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgentManagerRuntime } from '../AgentManagerRuntime';
-import type { IAgentService, IDiscoverService } from '../types';
+import type {
+  GetAvailableModelsState,
+  IAgentService,
+  IDiscoverService,
+  SearchAgentState,
+} from '../types';
 
 // Create mock services
 const mockAgentService: IAgentService = {
@@ -303,10 +308,11 @@ describe('AgentManagerRuntime', () => {
       } as any);
 
       const result = await runtime.searchAgents({ keyword: 'test' });
+      const state = result.state as SearchAgentState | undefined;
 
       expect(result.success).toBe(true);
-      expect(result.state?.source).toBe('all');
-      expect(result.state?.agents).toHaveLength(2);
+      expect(state?.source).toBe('all');
+      expect(state?.agents).toHaveLength(2);
     });
 
     it('should return no agents found message', async () => {
@@ -336,10 +342,11 @@ describe('AgentManagerRuntime', () => {
 
     it('should filter by providerId', async () => {
       const result = await runtime.getAvailableModels({ providerId: 'openai' });
+      const state = result.state as GetAvailableModelsState | undefined;
 
       expect(result.success).toBe(true);
-      expect(result.state?.providers).toHaveLength(1);
-      expect(result.state?.providers[0].id).toBe('openai');
+      expect(state?.providers).toHaveLength(1);
+      expect(state?.providers[0].id).toBe('openai');
     });
   });
 

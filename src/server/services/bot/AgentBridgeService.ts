@@ -39,19 +39,23 @@ function extractErrorMessage(err: unknown): string {
   if (typeof err === 'string') return err;
 
   const e = err as Record<string, unknown>;
+  const nestedError =
+    typeof e.error === 'object' && e.error !== null ? (e.error as Record<string, unknown>) : undefined;
+  const body =
+    typeof e.body === 'object' && e.body !== null ? (e.body as Record<string, unknown>) : undefined;
 
   // { message: '...' }
   if (typeof e.message === 'string') return e.message;
 
   // { errorType: 'ProviderBizError', error: { stack: 'Error: ...\n  at ...' } }
-  if (e.error?.stack) {
-    const firstLine = String(e.error.stack).split('\n')[0];
+  if (typeof nestedError?.stack === 'string') {
+    const firstLine = nestedError.stack.split('\n')[0];
     const prefix = e.errorType ? `[${e.errorType}] ` : '';
     return `${prefix}${firstLine}`;
   }
 
   // { body: { message: '...' } }
-  if (typeof e.body?.message === 'string') return e.body.message;
+  if (typeof body?.message === 'string') return body.message;
 
   return JSON.stringify(err);
 }
@@ -686,8 +690,14 @@ export class AgentBridgeService {
     }
 
     // 2. Attachments from referenced (quoted/replied-to) message (Discord raw payload)
-    const raw = (message as any).raw as Record<string, unknown> | undefined;
-    const refAttachments = raw?.referenced_message?.attachments as AttachmentLike[] | undefined;
+    const raw = (message as any).raw as
+      | {
+          referenced_message?: {
+            attachments?: AttachmentLike[];
+          };
+        }
+      | undefined;
+    const refAttachments = raw?.referenced_message?.attachments;
     if (refAttachments?.length) {
       for (const att of refAttachments) {
         if (att.url) {

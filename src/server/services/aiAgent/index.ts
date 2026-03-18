@@ -441,7 +441,7 @@ export class AiAgentService {
 
     // Get manifest map and convert from Map to Record
     const manifestMap = toolsEngine.getEnabledPluginManifests(pluginIds);
-    const toolManifestMap: Record<string, unknown> = {};
+    const toolManifestMap: Record<string, LobeToolManifest> = {};
     manifestMap.forEach((manifest, id) => {
       toolManifestMap[id] = manifest;
     });

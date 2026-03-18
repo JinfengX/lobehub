@@ -493,8 +493,9 @@ export class ErrorHandlerService {
 
     if (error instanceof ServicesError) {
       // If error already has parsed errorType in details, use it directly
-      if (error.details?.errorType) {
-        return error.details.errorType;
+      const errorType = error.details?.errorType;
+      if (typeof errorType === 'string') {
+        return errorType;
       }
 
       // Otherwise use mapping table

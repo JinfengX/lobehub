@@ -29,7 +29,11 @@ export async function buildFluxSchnellWorkflow(
   const selectedCLIP = await context.modelResolverService.getOptimalComponent('clip', 'FLUX');
 
   // Process prompt splitting early in workflow construction
-  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt);
+  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt ?? '');
+  const cfg = params.cfg ?? 1;
+  const width = params.width ?? 1024;
+  const height = params.height ?? 1024;
+  const steps = params.steps ?? 4;
 
   const workflow = {
     '1': {
@@ -81,8 +85,8 @@ export async function buildFluxSchnellWorkflow(
       class_type: 'EmptySD3LatentImage',
       inputs: {
         batch_size: WORKFLOW_DEFAULTS.IMAGE.BATCH_SIZE,
-        height: params.height,
-        width: params.width,
+        height,
+        width,
       },
     },
     '6': {
@@ -130,11 +134,11 @@ export async function buildFluxSchnellWorkflow(
   workflow['4'].inputs.t5xxl = t5xxlPrompt;
 
   // Set shared values directly to avoid conflicts - use params directly without intermediate variables
-  workflow['5'].inputs.width = params.width; // EmptySD3LatentImage needs width/height
-  workflow['5'].inputs.height = params.height;
-  workflow['4'].inputs.guidance = params.cfg; // CLIPTextEncodeFlux needs guidance
-  workflow['6'].inputs.cfg = params.cfg; // KSampler needs cfg
-  workflow['6'].inputs.steps = params.steps; // KSampler needs steps
+  workflow['5'].inputs.width = width; // EmptySD3LatentImage needs width/height
+  workflow['5'].inputs.height = height;
+  workflow['4'].inputs.guidance = cfg; // CLIPTextEncodeFlux needs guidance
+  workflow['6'].inputs.cfg = cfg; // KSampler needs cfg
+  workflow['6'].inputs.steps = steps; // KSampler needs steps
   workflow['6'].inputs.seed = params.seed ?? generateUniqueSeeds(1)[0]; // KSampler needs seed
   workflow['6'].inputs.scheduler = params.scheduler; // KSampler needs scheduler
   workflow['6'].inputs.sampler_name = params.samplerName; // KSampler needs sampler_name
@@ -158,10 +162,10 @@ export async function buildFluxSchnellWorkflow(
 
   // Set input values (prompt already set directly in workflow)
   builder
-    .input('width', params.width)
-    .input('height', params.height)
-    .input('steps', params.steps)
-    .input('cfg', params.cfg)
+    .input('width', width)
+    .input('height', height)
+    .input('steps', steps)
+    .input('cfg', cfg)
     .input('seed', params.seed ?? generateUniqueSeeds(1)[0]);
 
   return builder;

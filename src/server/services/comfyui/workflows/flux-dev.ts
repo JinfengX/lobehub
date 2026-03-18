@@ -29,7 +29,7 @@ export async function buildFluxDevWorkflow(
   const selectedCLIP = await context.modelResolverService.getOptimalComponent('clip', 'FLUX');
 
   // Process prompt splitting early in workflow construction
-  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt);
+  const { t5xxlPrompt, clipLPrompt } = splitPromptForDualCLIP(params.prompt ?? '');
 
   const workflow = {
     '1': {

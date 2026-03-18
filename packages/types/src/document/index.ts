@@ -1,6 +1,10 @@
 import type { RichTextEditorState } from '../message';
 
-export interface LobeDocumentMetadata {
+export interface LobeDocumentMetadataOverrides {}
+
+export interface LobeDocumentMetadata
+  extends LobeDocumentMetadataOverrides,
+    Record<string, unknown> {
   author?: string;
   createdAt?: number;
   duplicatedFrom?: string;

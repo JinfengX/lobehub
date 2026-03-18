@@ -31,13 +31,13 @@ export interface SimpleSDParams extends ComfyUIWorkflowParams {
   cfg?: number; // Guidance scale for generation
   denoise?: number; // Denoising strength for i2i mode (0.0 - 1.0, default: 0.75)
   height?: number; // Image height
-  imageUrl?: string; // Frontend parameter: Input image URL for i2i mode
+  imageUrl?: string | null; // Frontend parameter: Input image URL for i2i mode
   imageUrls?: string[]; // Alternative: Array of image URLs (uses first one)
   inputImage?: string; // Internal parameter: Input image URL/path for i2i mode
   prompt?: string; // Text prompt for generation
   samplerName?: string; // Sampling algorithm (default: 'euler')
   scheduler?: string; // Noise scheduler (default: varies by model type)
-  seed?: number; // Random seed for generation
+  seed?: number | null; // Random seed for generation
   steps?: number; // Number of denoising steps
   strength?: number; // Frontend parameter: Image modification strength (maps to denoise)
   width?: number; // Image width

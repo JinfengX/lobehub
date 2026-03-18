@@ -9,14 +9,18 @@ import { buildSD35Workflow } from '@/server/services/comfyui/workflows/sd35';
 import { buildSimpleSDWorkflow } from '@/server/services/comfyui/workflows/simple-sd';
 
 export interface ComfyUIWorkflowParams {
+  aspectRatio?: string;
   cfg?: number;
   height?: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
   imageUrls?: string[];
+  negativePrompt?: string;
   prompt?: string;
+  quality?: string;
   samplerName?: string;
   scheduler?: string;
-  seed?: number;
+  seed?: number | null;
+  shift?: number;
   steps?: number;
   strength?: number;
   width?: number;

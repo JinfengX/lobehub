@@ -268,6 +268,7 @@ describe('AgentRuntimeService - Completion Webhook', () => {
       const state = await stateManager.loadAgentState(operationId);
       const webhook = state?.metadata?.completionWebhook;
       expect(webhook).toBeDefined();
+      if (!webhook) throw new Error('Expected completionWebhook to be defined');
       expect(webhook.url).toBe(webhookUrl);
       expect(webhook.body).toEqual(webhookBody);
     });

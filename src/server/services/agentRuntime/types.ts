@@ -4,6 +4,33 @@ import { type UserInterventionConfig } from '@lobechat/types';
 
 import { type ServerUserMemoryConfig } from '@/server/modules/Mecha/ContextEngineering/types';
 
+declare module '@lobechat/agent-runtime' {
+  interface AgentStateMetadataOverrides {
+    _stepTracking?: Record<string, unknown>;
+    agentConfig?: unknown;
+    completionWebhook?: {
+      body?: Record<string, unknown>;
+      url: string;
+    };
+    deviceSystemInfo?: Record<string, string>;
+    discordContext?: unknown;
+    evalContext?: unknown;
+    groupId?: string | null;
+    modelRuntimeConfig?: unknown;
+    skillMetas?: Array<{ description: string; identifier: string; name: string }>;
+    stepWebhook?: {
+      body?: Record<string, unknown>;
+      url: string;
+    };
+    stream?: boolean;
+    trigger?: string;
+    userId?: string;
+    userMemory?: ServerUserMemoryConfig;
+    userTimezone?: string;
+    webhookDelivery?: 'fetch' | 'qstash';
+  }
+}
+
 // ==================== Operation Tool Set ====================
 
 export interface OperationToolSet {

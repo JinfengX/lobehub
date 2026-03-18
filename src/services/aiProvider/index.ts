@@ -1,6 +1,7 @@
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type AiProviderDetailItem,
+  type AiProviderListItem,
   type AiProviderRuntimeState,
   type AiProviderSortMap,
   type CreateAiProviderParams,
@@ -12,8 +13,8 @@ export class AiProviderService {
     return lambdaClient.aiProvider.createAiProvider.mutate(params);
   };
 
-  getAiProviderList = async () => {
-    return lambdaClient.aiProvider.getAiProviderList.query();
+  getAiProviderList = async (): Promise<AiProviderListItem[]> => {
+    return (await lambdaClient.aiProvider.getAiProviderList.query()) as unknown as AiProviderListItem[];
   };
 
   getAiProviderById = async (id: string): Promise<AiProviderDetailItem | undefined> => {

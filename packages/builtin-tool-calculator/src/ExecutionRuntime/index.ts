@@ -34,11 +34,12 @@ export class CalculatorExecutionRuntime {
   async calculate(args: CalculateParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.calculate(args);
+      const resultState = result.state as CalculateState | undefined;
 
       const state: CalculateState = {
-        expression: result.state?.expression,
-        precision: result.state?.precision,
-        result: result.state?.result as number | string | undefined,
+        expression: resultState?.expression,
+        precision: resultState?.precision,
+        result: resultState?.result,
       };
 
       return {
@@ -59,12 +60,13 @@ export class CalculatorExecutionRuntime {
   async evaluate(args: EvaluateParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.evaluate(args);
+      const resultState = result.state as EvaluateState | undefined;
 
       const state: EvaluateState = {
-        expression: result.state?.expression,
-        precision: result.state?.precision,
-        result: result.state?.result as number | string | undefined,
-        variables: result.state?.variables,
+        expression: resultState?.expression,
+        precision: resultState?.precision,
+        result: resultState?.result,
+        variables: resultState?.variables,
       };
 
       return {
@@ -85,16 +87,17 @@ export class CalculatorExecutionRuntime {
   async sort(args: SortParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.sort(args);
+      const resultState = result.state as SortState | undefined;
 
       const state: SortState = {
-        largest: result.state?.largest as number | string | undefined,
-        mode: result.state?.mode,
-        originalNumbers: result.state?.originalNumbers,
-        precision: result.state?.precision,
-        result: result.state?.result,
-        reverse: result.state?.reverse,
-        smallest: result.state?.smallest as number | string | undefined,
-        sorted: result.state?.sorted as (string | number)[] | undefined,
+        largest: resultState?.largest,
+        mode: resultState?.mode,
+        originalNumbers: resultState?.originalNumbers,
+        precision: resultState?.precision,
+        result: resultState?.result,
+        reverse: resultState?.reverse,
+        smallest: resultState?.smallest,
+        sorted: resultState?.sorted,
       };
 
       return {
@@ -115,13 +118,14 @@ export class CalculatorExecutionRuntime {
   async base(args: BaseParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.base(args);
+      const resultState = result.state as BaseState | undefined;
 
       const state: BaseState = {
-        convertedNumber: result.state?.convertedNumber,
-        decimalValue: result.state?.decimalValue,
-        originalBase: result.state?.originalBase as string | undefined,
-        originalNumber: result.state?.originalNumber as string | undefined,
-        targetBase: result.state?.targetBase as string | undefined,
+        convertedNumber: resultState?.convertedNumber,
+        decimalValue: resultState?.decimalValue,
+        originalBase: resultState?.originalBase,
+        originalNumber: resultState?.originalNumber,
+        targetBase: resultState?.targetBase,
       };
 
       return {
@@ -142,11 +146,12 @@ export class CalculatorExecutionRuntime {
   async solve(args: SolveParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.solve(args);
+      const resultState = result.state as SolveState | undefined;
 
       const state: SolveState = {
-        equation: result.state?.equation,
-        result: result.state?.result as string | string[] | undefined,
-        variable: result.state?.variable,
+        equation: resultState?.equation,
+        result: resultState?.result,
+        variable: resultState?.variable,
       };
 
       return {
@@ -167,11 +172,12 @@ export class CalculatorExecutionRuntime {
   async differentiate(args: DifferentiateParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.differentiate(args);
+      const resultState = result.state as DifferentiateState | undefined;
 
       const state: DifferentiateState = {
-        expression: result.state?.expression,
-        result: result.state?.result as string | undefined,
-        variable: result.state?.variable,
+        expression: resultState?.expression,
+        result: resultState?.result,
+        variable: resultState?.variable,
       };
 
       return {
@@ -192,10 +198,11 @@ export class CalculatorExecutionRuntime {
   async execute(args: ExecuteParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.execute(args);
+      const resultState = result.state as ExecuteState | undefined;
 
       const state: ExecuteState = {
-        expression: result.state?.expression,
-        result: result.state?.result as string | undefined,
+        expression: resultState?.expression,
+        result: resultState?.result,
       };
 
       return {
@@ -216,13 +223,14 @@ export class CalculatorExecutionRuntime {
   async defintegrate(args: DefintegrateParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.defintegrate(args);
+      const resultState = result.state as DefintegrateState | undefined;
 
       const state: DefintegrateState = {
-        expression: result.state?.expression,
-        lowerBound: result.state?.lowerBound,
-        result: result.state?.result as string | undefined,
-        upperBound: result.state?.upperBound,
-        variable: result.state?.variable,
+        expression: resultState?.expression,
+        lowerBound: resultState?.lowerBound,
+        result: resultState?.result,
+        upperBound: resultState?.upperBound,
+        variable: resultState?.variable,
       };
 
       return {
@@ -243,11 +251,12 @@ export class CalculatorExecutionRuntime {
   async integrate(args: IntegrateParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.integrate(args);
+      const resultState = result.state as IntegrateState | undefined;
 
       const state: IntegrateState = {
-        expression: result.state?.expression,
-        result: result.state?.result as string | undefined,
-        variable: result.state?.variable,
+        expression: resultState?.expression,
+        result: resultState?.result,
+        variable: resultState?.variable,
       };
 
       return {
@@ -268,12 +277,13 @@ export class CalculatorExecutionRuntime {
   async limit(args: LimitParams): Promise<BuiltinServerRuntimeOutput> {
     try {
       const result = await calculatorExecutor.limit(args);
+      const resultState = result.state as LimitState | undefined;
 
       const state: LimitState = {
-        expression: result.state?.expression,
-        point: result.state?.point,
-        result: result.state?.result as string | undefined,
-        variable: result.state?.variable,
+        expression: resultState?.expression,
+        point: resultState?.point,
+        result: resultState?.result,
+        variable: resultState?.variable,
       };
 
       return {
