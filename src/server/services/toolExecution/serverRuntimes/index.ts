@@ -8,6 +8,7 @@
  */
 import { type ToolExecutionContext } from '../types';
 import { agentDocumentsRuntime } from './agentDocuments';
+import { briefRuntime } from './brief';
 import { calculatorRuntime } from './calculator';
 import { cloudSandboxRuntime } from './cloudSandbox';
 import { localSystemRuntime } from './localSystem';
@@ -16,6 +17,7 @@ import { notebookRuntime } from './notebook';
 import { remoteDeviceRuntime } from './remoteDevice';
 import { skillsRuntime } from './skills';
 import { skillStoreRuntime } from './skillStore';
+import { taskRuntime } from './task';
 import { toolsActivatorRuntime } from './tools';
 import { topicReferenceRuntime } from './topicReference';
 import { type ServerRuntimeFactory, type ServerRuntimeRegistration } from './types';
@@ -48,6 +50,8 @@ registerRuntimes([
   toolsActivatorRuntime,
   localSystemRuntime,
   remoteDeviceRuntime,
+  briefRuntime,
+  taskRuntime,
   topicReferenceRuntime,
 ]);
 

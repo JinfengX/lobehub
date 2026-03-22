@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import { registerAgentCommand } from './commands/agent';
 import { registerAgentGroupCommand } from './commands/agent-group';
 import { registerBotCommand } from './commands/bot';
+import { registerBriefCommand } from './commands/brief';
 import { registerConfigCommand } from './commands/config';
 import { registerConnectCommand } from './commands/connect';
 import { registerCronCommand } from './commands/cron';
@@ -25,6 +26,7 @@ import { registerSearchCommand } from './commands/search';
 import { registerSessionGroupCommand } from './commands/session-group';
 import { registerSkillCommand } from './commands/skill';
 import { registerStatusCommand } from './commands/status';
+import { registerTaskCommand } from './commands/task';
 import { registerThreadCommand } from './commands/thread';
 import { registerTopicCommand } from './commands/topic';
 import { registerUserCommand } from './commands/user';
@@ -51,11 +53,13 @@ registerMemoryCommand(program);
 registerAgentCommand(program);
 registerAgentGroupCommand(program);
 registerBotCommand(program);
+registerBriefCommand(program);
 registerCronCommand(program);
 registerGenerateCommand(program);
 registerFileCommand(program);
 registerSkillCommand(program);
 registerSessionGroupCommand(program);
+registerTaskCommand(program);
 registerThreadCommand(program);
 registerTopicCommand(program);
 registerMessageCommand(program);
@@ -65,5 +69,33 @@ registerPluginCommand(program);
 registerUserCommand(program);
 registerConfigCommand(program);
 registerEvalCommand(program);
+
+// Global error handler for clean TRPC error output
+process.on('uncaughtException', (error: any) => {
+  if (error?.name === 'TRPCClientError' || error?.constructor?.name?.includes('TRPCClientError')) {
+    const message = error.message || 'Unknown error';
+    const code = error.data?.code || error.shape?.data?.code || '';
+    const path = error.data?.path || error.shape?.data?.path || '';
+    console.error(`\x1B[31mError${path ? ` [${path}]` : ''}: ${message}\x1B[0m`);
+    if (code) console.error(`\x1B[2mCode: ${code}\x1B[0m`);
+    process.exit(1);
+  }
+  // Re-throw non-TRPC errors
+  console.error(error?.message || error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (error: any) => {
+  if (error?.name === 'TRPCClientError' || error?.constructor?.name?.includes('TRPCClientError')) {
+    const message = error.message || 'Unknown error';
+    const code = error.data?.code || error.shape?.data?.code || '';
+    const path = error.data?.path || error.shape?.data?.path || '';
+    console.error(`\x1B[31mError${path ? ` [${path}]` : ''}: ${message}\x1B[0m`);
+    if (code) console.error(`\x1B[2mCode: ${code}\x1B[0m`);
+    process.exit(1);
+  }
+  console.error(error?.message || error);
+  process.exit(1);
+});
 
 program.parse();

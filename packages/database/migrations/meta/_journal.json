@@ -665,6 +665,55 @@
       "when": 1773764776073,
       "tag": "0094_agent_bot_providers_add_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1773850982237,
+      "tag": "0095_add_task_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1773853482934,
+      "tag": "0096_add_briefs_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1774076958222,
+      "tag": "0097_task_topics_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1774111469332,
+      "tag": "0098_task_comments_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1774113563874,
+      "tag": "0099_brief_add_resolved_action",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1774155179480,
+      "tag": "0100_task_add_sort_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1774172870748,
+      "tag": "0101_task_topic_review_fields",
+      "breakpoints": true
     }
   ],
   "version": "6"

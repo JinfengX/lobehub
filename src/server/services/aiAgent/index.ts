@@ -81,6 +81,8 @@ function formatErrorForMetadata(error: unknown): Record<string, any> | undefined
  * This extends the public ExecAgentParams with server-side only options
  */
 interface InternalExecAgentParams extends ExecAgentParams {
+  /** Additional plugin IDs to inject (e.g., task tool during task execution) */
+  additionalPluginIds?: string[];
   /** Bot context for topic metadata (platform, applicationId, platformThreadId) */
   botContext?: ChatTopicBotContext;
   /**
@@ -123,13 +125,15 @@ interface InternalExecAgentParams extends ExecAgentParams {
    * Defaults to true. Set to false for non-streaming scenarios (e.g., bot integrations).
    */
   stream?: boolean;
+  /** Task ID that triggered this execution (if trigger is 'task') */
+  taskId?: string;
   /**
    * Custom title for the topic.
    * When provided (including empty string), overrides the default prompt-based title.
    * When undefined, falls back to prompt.slice(0, 50).
    */
   title?: string;
-  /** Topic creation trigger source ('cron' | 'chat' | 'api') */
+  /** Topic creation trigger source ('cron' | 'chat' | 'api' | 'task') */
   trigger?: string;
   /**
    * User intervention configuration
@@ -198,6 +202,7 @@ export class AiAgentService {
    */
   async execAgent(params: InternalExecAgentParams): Promise<ExecAgentResult> {
     const {
+      additionalPluginIds,
       agentId,
       slug,
       prompt,
@@ -214,6 +219,7 @@ export class AiAgentService {
       title,
       trigger,
       cronJobId,
+      taskId,
       evalContext,
       maxSteps,
       userInterventionConfig,
@@ -283,10 +289,10 @@ export class AiAgentService {
     // 3. Handle topic creation: if no topicId provided, create a new topic; otherwise reuse existing
     let topicId = appContext?.topicId;
     if (!topicId) {
-      // Prepare metadata with cronJobId and botContext if provided
+      // Prepare metadata with cronJobId, taskId, and botContext if provided
       const metadata =
-        cronJobId || botContext
-          ? { bot: botContext, cronJobId: cronJobId || undefined }
+        cronJobId || taskId || botContext
+          ? { bot: botContext, cronJobId: cronJobId || undefined, taskId: taskId || undefined }
           : undefined;
 
       const newTopic = await this.topicModel.create({
@@ -391,6 +397,7 @@ export class AiAgentService {
     const hasTopicReference = /refer_topic/.test(prompt ?? '');
     const agentPlugins = [
       ...(agentConfig?.plugins ?? []),
+      ...(additionalPluginIds || []),
       ...(hasTopicReference ? ['lobe-topic-reference'] : []),
     ];
 
@@ -429,6 +436,7 @@ export class AiAgentService {
     // Include device tool IDs so ToolsEngine can process them via enableChecker
     const pluginIds = [
       ...(agentConfig.plugins || []),
+      ...(additionalPluginIds || []),
       LocalSystemManifest.identifier,
       RemoteDeviceManifest.identifier,
     ];
@@ -785,6 +793,7 @@ export class AiAgentService {
         appContext: {
           agentId: resolvedAgentId,
           groupId: appContext?.groupId,
+          taskId,
           threadId: appContext?.threadId,
           topicId,
           trigger,
@@ -1330,11 +1339,9 @@ export class AiAgentService {
     // We'll gracefully handle this case by only updating thread status
     try {
       // Check if the method exists before calling (using type assertion for future method)
-      const service = this.agentRuntimeService as any;
+      const service = this.agentRuntimeService;
       if (typeof service.interruptOperation === 'function') {
-        await service.interruptOperation({
-          operationId: resolvedOperationId,
-        });
+        await service.interruptOperation(resolvedOperationId);
       } else {
         log('interruptTask: interruptOperation method not available, only updating thread status');
       }

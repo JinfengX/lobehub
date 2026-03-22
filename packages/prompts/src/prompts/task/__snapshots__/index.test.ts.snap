@@ -1,0 +1,173 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildTaskRunPrompt > should build prompt with only task instruction 1`] = `
+"<task name="写一本书" identifier="TASK-1">
+帮我写一本 AI Agent 技术书籍
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should build prompt with task description + instruction 1`] = `
+"<task name="写一本书" identifier="TASK-1" description="面向开发者的技术书籍">
+帮我写一本 AI Agent 技术书籍，目标 8 章
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should handle empty activities gracefully 1`] = `
+"<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should handle full scenario with all sections 1`] = `
+"<high_priority_instruction>
+这次直接开始写第1章
+</high_priority_instruction>
+
+<user_feedback>
+<comment time="3h ago">第5章后移，增加评测章节</comment>
+</user_feedback>
+
+<activities>
+<comment role="agent" time="2h ago">已调整大纲</comment>
+<comment role="user" time="3h ago">第5章后移，增加评测章节</comment>
+<brief id="brief_001" type="decision" resolved="approve" time="18h ago">
+  大纲完成
+  大纲已完成
+</brief>
+<topic id="tpc_001" seq="1" status="completed" time="19h ago">
+  制定大纲
+  完成大纲
+</topic>
+</activities>
+
+<task name="写一本书" identifier="TASK-1" description="面向开发者的 AI Agent 技术书籍">
+写一本 AI Agent 书，目标 8 章
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should include activity history with topics and briefs in CLI style 1`] = `
+"<activities>
+<brief id="brief_def456" type="decision" priority="normal" time="18h ago">
+  建议拆分第4章
+  第4章内容过多，建议拆分
+</brief>
+<topic id="tpc_bbb" seq="2" status="completed" time="18h ago">
+  修订大纲
+  修订了大纲并拆分子任务
+</topic>
+<brief id="brief_abc123" type="decision" priority="urgent" resolved="approve" time="18h ago">
+  大纲完成
+  8章大纲已制定完成
+</brief>
+<topic id="tpc_aaa" seq="1" status="completed" time="19h ago">
+  制定大纲
+  完成了大纲制定
+</topic>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should include agent comments with author label and time 1`] = `
+"<user_feedback>
+<comment time="2h ago">确认，开始写</comment>
+</user_feedback>
+
+<activities>
+<comment role="user" time="2h ago">确认，开始写</comment>
+<comment role="agent" time="3h ago">大纲已完成，请确认</comment>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should include subtasks in activities 1`] = `
+"<activities>
+<subtask id="task_bbb" identifier="TASK-3" status="running">第2章 快速上手</subtask>
+<subtask id="task_aaa" identifier="TASK-2" status="backlog">第1章 Agent 概述</subtask>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should only include user comments in user_feedback, not agent comments 1`] = `
+"<user_feedback>
+<comment time="2h ago">用户反馈</comment>
+</user_feedback>
+
+<activities>
+<comment role="agent" time="1h ago">Agent 回复</comment>
+<comment role="user" time="2h ago">用户反馈</comment>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should place high_priority_instruction first, then feedback 1`] = `
+"<high_priority_instruction>
+这次重点关注第3章
+</high_priority_instruction>
+
+<user_feedback>
+<comment time="1h ago">用户反馈</comment>
+</user_feedback>
+
+<activities>
+<comment role="user" time="1h ago">用户反馈</comment>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should prioritize user feedback at the top 1`] = `
+"<user_feedback>
+<comment time="2h ago">第2章改为先上手再讲原理</comment>
+<comment time="1h ago">增加评测章节</comment>
+</user_feedback>
+
+<activities>
+<comment role="user" time="1h ago">增加评测章节</comment>
+<comment role="user" time="2h ago">第2章改为先上手再讲原理</comment>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should show resolved action and comment on briefs 1`] = `
+"<activities>
+<brief type="result" resolved="feedback: 第2章需要更多实例" time="19h ago">
+  第2章完成
+  第2章初稿完成
+</brief>
+</activities>
+
+<task name="第2章" identifier="TASK-2">
+写第2章
+</task>"
+`;
+
+exports[`buildTaskRunPrompt > should truncate comments to 50 chars in activities but keep full in user_feedback 1`] = `
+"<user_feedback>
+<comment time="1h ago">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA — this part should be truncated in activities</comment>
+</user_feedback>
+
+<activities>
+<comment role="user" time="1h ago">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...</comment>
+</activities>
+
+<task name="写一本书" identifier="TASK-1">
+写书
+</task>"
+`;

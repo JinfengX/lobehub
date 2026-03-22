@@ -135,6 +135,7 @@ export interface OperationCreationParams {
   appContext: {
     agentId?: string;
     groupId?: string | null;
+    taskId?: string;
     threadId?: string | null;
     topicId?: string | null;
     trigger?: string;
