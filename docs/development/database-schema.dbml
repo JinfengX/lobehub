@@ -1426,9 +1426,14 @@ table task_topics {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   task_id text [not null]
   topic_id text [not null]
+  user_id text [not null]
   seq integer [not null]
   operation_id text
   status text [not null, default: 'running']
+  handoff_title text
+  handoff_summary text
+  handoff_key_findings jsonb
+  handoff_next_action text
   review_passed integer
   review_score integer
   review_scores jsonb
@@ -1440,6 +1445,7 @@ table task_topics {
     (task_id, topic_id) [name: 'task_topics_unique_idx', unique]
     task_id [name: 'task_topics_task_id_idx']
     topic_id [name: 'task_topics_topic_id_idx']
+    user_id [name: 'task_topics_user_id_idx']
     (task_id, status) [name: 'task_topics_status_idx']
   }
 }

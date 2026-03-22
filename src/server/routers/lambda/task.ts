@@ -1,21 +1,17 @@
 import { BriefIdentifier } from '@lobechat/builtin-tool-brief';
 import { TaskIdentifier } from '@lobechat/builtin-tool-task';
-import {
-  buildTaskRunPrompt,
-  chainTaskTopicHandoff,
-  TASK_TOPIC_HANDOFF_SCHEMA,
-} from '@lobechat/prompts';
+import { buildTaskRunPrompt } from '@lobechat/prompts';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { BriefModel } from '@/database/models/brief';
 import { TaskModel } from '@/database/models/task';
+import { TaskTopicModel } from '@/database/models/taskTopic';
 import { TopicModel } from '@/database/models/topic';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { AiAgentService } from '@/server/services/aiAgent';
-import { SystemAgentService } from '@/server/services/systemAgent';
+import { TaskLifecycleService } from '@/server/services/taskLifecycle';
 import { TaskReviewService } from '@/server/services/taskReview';
 
 const taskProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
@@ -23,8 +19,9 @@ const taskProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   return opts.next({
     ctx: {
       briefModel: new BriefModel(ctx.serverDB, ctx.userId),
-      systemAgentService: new SystemAgentService(ctx.serverDB, ctx.userId),
+      taskLifecycle: new TaskLifecycleService(ctx.serverDB, ctx.userId),
       taskModel: new TaskModel(ctx.serverDB, ctx.userId),
+      taskTopicModel: new TaskTopicModel(ctx.serverDB, ctx.userId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId),
     },
   });
@@ -70,16 +67,18 @@ const listSchema = z.object({
 // Helper: build task prompt with handoff context from previous topics
 async function buildTaskPrompt(
   task: Awaited<ReturnType<TaskModel['findById']>> & {},
-  db: any,
-  userId: string,
+  ctx: {
+    briefModel: BriefModel;
+    taskModel: TaskModel;
+    taskTopicModel: TaskTopicModel;
+  },
   extraPrompt?: string,
 ): Promise<string> {
-  const taskModel = new TaskModel(db, userId);
-  const briefModel = new BriefModel(db, userId);
+  const { briefModel, taskModel, taskTopicModel } = ctx;
 
   const [topics, briefs, comments, subtasks] = await Promise.all([
     task.totalTopics && task.totalTopics > 0
-      ? taskModel.getTopicsWithHandoff(task.id).catch(() => [])
+      ? taskTopicModel.findWithHandoff(task.id).catch(() => [])
       : Promise.resolve([]),
     briefModel.findByTaskId(task.id).catch(() => []),
     taskModel.getComments(task.id).catch(() => []),
@@ -205,7 +204,7 @@ export const taskRouter = router({
         const task = await resolveOrThrow(model, input.id);
 
         // Find the topic and its operationId
-        const topics = await model.getTopics(task.id);
+        const topics = await ctx.taskTopicModel.findByTaskId(task.id);
         const target = topics.find((t) => t.topicId === input.topicId);
         if (!target) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Topic not found for this task.' });
@@ -225,7 +224,7 @@ export const taskRouter = router({
         }
 
         // Mark topic as canceled
-        await model.updateTopicStatus(task.id, input.topicId, 'canceled');
+        await ctx.taskTopicModel.updateStatus(task.id, input.topicId, 'canceled');
 
         // Pause the task
         await model.updateStatus(task.id, 'paused');
@@ -250,7 +249,7 @@ export const taskRouter = router({
         const task = await resolveOrThrow(model, input.id);
 
         // Check topic exists
-        const topics = await model.getTopics(task.id);
+        const topics = await ctx.taskTopicModel.findByTaskId(task.id);
         const target = topics.find((t) => t.topicId === input.topicId);
         if (!target) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Topic not found for this task.' });
@@ -263,11 +262,10 @@ export const taskRouter = router({
         }
 
         // Remove association from task_topics
-        await model.removeTopic(task.id, input.topicId);
+        await ctx.taskTopicModel.remove(task.id, input.topicId);
 
         // Delete the topic itself (messages etc.)
-        const topicModel = new TopicModel(ctx.serverDB, ctx.userId);
-        await topicModel.delete(input.topicId);
+        await ctx.topicModel.delete(input.topicId);
 
         return { message: 'Topic deleted', success: true };
       } catch (error) {
@@ -348,7 +346,7 @@ export const taskRouter = router({
         if (elapsed > task.heartbeatTimeout) {
           // Mark task as paused and running topics as timeout
           await model.updateStatus(task.id, 'paused', { error: 'Heartbeat timeout' });
-          await model.timeoutRunningTopics(task.id);
+          await ctx.taskTopicModel.timeoutRunning(task.id);
           // Re-fetch updated task
           task = await resolveOrThrow(model, input.id);
         }
@@ -365,7 +363,7 @@ export const taskRouter = router({
       const [subtasks, dependencies, topics, briefs, comments] = await Promise.all([
         model.findSubtasks(task.id),
         model.getDependencies(task.id),
-        model.getTopicsWithDetails(task.id),
+        ctx.taskTopicModel.findWithDetails(task.id),
         briefModel.findByTaskId(task.id),
         model.getComments(task.id),
       ]);
@@ -453,7 +451,7 @@ export const taskRouter = router({
     try {
       const model = ctx.taskModel;
       const task = await resolveOrThrow(model, input.id);
-      const results = await model.getTopicsWithDetails(task.id);
+      const results = await ctx.taskTopicModel.findWithDetails(task.id);
       return { data: results, success: true };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
@@ -602,7 +600,7 @@ export const taskRouter = router({
 
         // Idempotency: if continuing a topic that's already running, reject
         if (continueTopicId) {
-          const existingTopics = await model.getTopics(task.id);
+          const existingTopics = await ctx.taskTopicModel.findByTaskId(task.id);
           const target = existingTopics.find((t) => t.topicId === continueTopicId);
           if (target?.status === 'running') {
             throw new TRPCError({
@@ -616,12 +614,12 @@ export const taskRouter = router({
         if (task.lastHeartbeatAt && task.heartbeatTimeout) {
           const elapsed = (Date.now() - new Date(task.lastHeartbeatAt).getTime()) / 1000;
           if (elapsed > task.heartbeatTimeout) {
-            await model.timeoutRunningTopics(task.id);
+            await ctx.taskTopicModel.timeoutRunning(task.id);
           }
         }
 
         // Build prompt with handoff context from previous topics
-        const prompt = await buildTaskPrompt(task, ctx.serverDB, ctx.userId, extraPrompt);
+        const prompt = await buildTaskPrompt(task, ctx, extraPrompt);
 
         // Update task status to running if not already, clear previous error
         if (task.status !== 'running') {
@@ -638,14 +636,17 @@ export const taskRouter = router({
         const aiAgentService = new AiAgentService(ctx.serverDB, ctx.userId);
         const taskId = task.id;
         const taskIdentifier = task.identifier;
-        const { briefModel, systemAgentService, taskModel: hookTaskModel, topicModel } = ctx;
+        const { taskLifecycle } = ctx;
         const db = ctx.serverDB;
         const userId = ctx.userId;
 
-        // Conditionally inject brief tool based on checkpoint config
+        // Conditionally inject brief tool:
+        // - NOT injected when review is configured (system controls brief creation after review)
+        // - Injected when onAgentRequest checkpoint is enabled (agent can request review via brief)
         const checkpoint = model.getCheckpointConfig(task);
+        const reviewConfig = model.getReviewConfig(task);
         const pluginIds = [TaskIdentifier];
-        if (checkpoint.onAgentRequest !== false) {
+        if (!reviewConfig?.enabled && checkpoint.onAgentRequest !== false) {
           pluginIds.push(BriefIdentifier);
         }
 
@@ -655,88 +656,15 @@ export const taskRouter = router({
           hooks: [
             {
               handler: async (event) => {
-                await hookTaskModel.updateHeartbeat(taskId);
-
-                const topicId = event.topicId;
-
-                // Get topic seq for display
-                const currentTask = await hookTaskModel.findById(taskId);
-                const topicSeq = currentTask?.totalTopics || '?';
-                const topicRef = topicId ? ` #${topicSeq} (${topicId})` : '';
-
-                if (event.reason === 'done') {
-                  // Update topic status
-                  if (topicId) await hookTaskModel.updateTopicStatus(taskId, topicId, 'completed');
-
-                  // Generate handoff summary + topic title via LLM
-                  if (topicId && event.lastAssistantContent) {
-                    try {
-                      const { model, provider } = await (
-                        systemAgentService as any
-                      ).getTaskModelConfig('topic');
-
-                      const payload = chainTaskTopicHandoff({
-                        lastAssistantContent: event.lastAssistantContent,
-                        taskInstruction: currentTask?.instruction || '',
-                        taskName: currentTask?.name || taskIdentifier,
-                      });
-
-                      const modelRuntime = await initModelRuntimeFromDB(db, userId, provider);
-                      const result = await modelRuntime.generateObject(
-                        {
-                          messages: payload.messages as any[],
-                          model,
-                          schema: {
-                            name: 'task_topic_handoff',
-                            schema: TASK_TOPIC_HANDOFF_SCHEMA,
-                          },
-                        },
-                        { metadata: { trigger: 'task-handoff' } },
-                      );
-
-                      const handoff = result as {
-                        keyFindings?: string[];
-                        nextAction?: string;
-                        summary?: string;
-                        title?: string;
-                      };
-
-                      if (handoff.title) {
-                        await topicModel.update(topicId, { title: handoff.title });
-                      }
-
-                      await topicModel.updateMetadata(topicId, {
-                        handoff: {
-                          keyFindings: handoff.keyFindings,
-                          nextAction: handoff.nextAction,
-                          summary: handoff.summary,
-                        },
-                      } as any);
-                    } catch (e) {
-                      // Handoff generation is non-critical, don't fail the hook
-                      console.warn('[task:onComplete] handoff generation failed:', e);
-                    }
-                  }
-
-                  // Check checkpoint config — pause task for user review
-                  if (currentTask && hookTaskModel.shouldPauseOnTopicComplete(currentTask)) {
-                    await hookTaskModel.updateStatus(taskId, 'paused', { error: null });
-                  }
-                } else if (event.reason === 'error') {
-                  // Update topic status
-                  if (topicId) await hookTaskModel.updateTopicStatus(taskId, topicId, 'failed');
-
-                  await briefModel.create({
-                    priority: 'urgent',
-                    summary: `Execution failed: ${event.errorMessage || 'Unknown error'}`,
-                    taskId,
-                    title: `${taskIdentifier} topic${topicRef} error`,
-                    type: 'error',
-                  });
-
-                  // On error, pause task for user intervention
-                  await hookTaskModel.updateStatus(taskId, 'paused');
-                }
+                await taskLifecycle.onTopicComplete({
+                  errorMessage: event.errorMessage,
+                  lastAssistantContent: event.lastAssistantContent,
+                  operationId: event.operationId,
+                  reason: event.reason || 'done',
+                  taskId,
+                  taskIdentifier,
+                  topicId: event.topicId,
+                });
               },
               id: 'task-on-complete',
               type: 'onComplete' as const,
@@ -759,13 +687,13 @@ export const taskRouter = router({
         if (result.topicId) {
           if (continueTopicId) {
             // Continuing existing topic — update status back to running
-            await model.updateTopicStatus(task.id, continueTopicId, 'running');
+            await ctx.taskTopicModel.updateStatus(task.id, continueTopicId, 'running');
             await model.updateCurrentTopic(task.id, continueTopicId);
           } else {
             // New topic
             await model.incrementTopicCount(task.id);
             await model.updateCurrentTopic(task.id, result.topicId);
-            await model.addTopic(task.id, result.topicId, {
+            await ctx.taskTopicModel.add(task.id, result.topicId, {
               operationId: result.operationId,
               seq: (task.totalTopics || 0) + 1,
             });
@@ -1023,7 +951,7 @@ export const taskRouter = router({
         // Get current iteration count for this topic
         let iteration = 1;
         if (topicId) {
-          const topics = await model.getTopics(task.id);
+          const topics = await ctx.taskTopicModel.findByTaskId(task.id);
           const target = topics.find((t) => t.topicId === topicId);
           if (target?.reviewIteration) {
             iteration = target.reviewIteration + 1;
@@ -1041,7 +969,7 @@ export const taskRouter = router({
 
         // Save review result to task_topics
         if (topicId) {
-          await model.updateTopicReview(task.id, topicId, {
+          await ctx.taskTopicModel.updateReview(task.id, topicId, {
             iteration,
             passed: result.passed,
             score: result.overallScore,

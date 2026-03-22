@@ -44,7 +44,7 @@ export const tasks = pgTable(
 
     // Heartbeat
     heartbeatInterval: integer('heartbeat_interval').default(300), // seconds
-    heartbeatTimeout: integer('heartbeat_timeout').$defaultFn(() => 600), // seconds
+    heartbeatTimeout: integer('heartbeat_timeout'), // seconds, null = disabled (default off)
     lastHeartbeatAt: timestamptz('last_heartbeat_at'),
 
     // Schedule (optional)
@@ -152,16 +152,25 @@ export const taskTopics = pgTable(
       .references(() => tasks.id, { onDelete: 'cascade' })
       .notNull(),
     topicId: text('topic_id').notNull(),
+    userId: text('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
 
     seq: integer('seq').notNull(), // topic sequence within task (1, 2, 3...)
     operationId: text('operation_id'), // agent execution operation ID
     // 'running' | 'completed' | 'failed' | 'timeout' | 'canceled'
     status: text('status').notNull().default('running'),
 
+    // Handoff (populated after topic completes via LLM summarization)
+    handoffTitle: text('handoff_title'),
+    handoffSummary: text('handoff_summary'),
+    handoffKeyFindings: jsonb('handoff_key_findings'), // string[]
+    handoffNextAction: text('handoff_next_action'),
+
     // Review results (populated after topic completes + review runs)
     reviewPassed: integer('review_passed'), // 1 = passed, 0 = failed, null = not reviewed
     reviewScore: integer('review_score'), // overall score 0-100
-    reviewScores: jsonb('review_scores'), // [{criterion, score, threshold, passed, feedback}]
+    reviewScores: jsonb('review_scores'), // [{rubricId, score, passed, reason}]
     reviewIteration: integer('review_iteration'), // which iteration (1, 2, 3...)
     reviewedAt: timestamptz('reviewed_at'),
 
@@ -171,6 +180,7 @@ export const taskTopics = pgTable(
     uniqueIndex('task_topics_unique_idx').on(t.taskId, t.topicId),
     index('task_topics_task_id_idx').on(t.taskId),
     index('task_topics_topic_id_idx').on(t.topicId),
+    index('task_topics_user_id_idx').on(t.userId),
     index('task_topics_status_idx').on(t.taskId, t.status),
   ],
 );

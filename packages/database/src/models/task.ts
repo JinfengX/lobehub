@@ -1,14 +1,8 @@
 import type { CheckpointConfig } from '@lobechat/types';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 
-import type {
-  NewTask,
-  NewTaskComment,
-  TaskCommentItem,
-  TaskItem,
-  TaskTopicItem,
-} from '../schemas/task';
-import { taskComments, taskDependencies, taskDocuments, tasks, taskTopics } from '../schemas/task';
+import type { NewTask, NewTaskComment, TaskCommentItem, TaskItem } from '../schemas/task';
+import { taskComments, taskDependencies, taskDocuments, tasks } from '../schemas/task';
 import type { LobeChatDatabase } from '../type';
 
 export class TaskModel {
@@ -411,131 +405,14 @@ export class TaskModel {
       .where(eq(tasks.id, id));
   }
 
-  async getTopicsWithDetails(taskId: string) {
-    const { topics } = await import('../schemas/topic');
-    return this.db
-      .select({
-        createdAt: topics.createdAt,
-        id: topics.id,
-        metadata: topics.metadata,
-        operationId: taskTopics.operationId,
-        reviewIteration: taskTopics.reviewIteration,
-        reviewPassed: taskTopics.reviewPassed,
-        reviewScore: taskTopics.reviewScore,
-        reviewScores: taskTopics.reviewScores,
-        reviewedAt: taskTopics.reviewedAt,
-        seq: taskTopics.seq,
-        status: taskTopics.status,
-        title: topics.title,
-        updatedAt: topics.updatedAt,
-      })
-      .from(taskTopics)
-      .innerJoin(topics, eq(taskTopics.topicId, topics.id))
-      .where(eq(taskTopics.taskId, taskId))
-      .orderBy(desc(taskTopics.seq));
-  }
-
-  async getTopicsWithHandoff(taskId: string, limit = 4) {
-    const { topics } = await import('../schemas/topic');
-    return this.db
-      .select({
-        createdAt: topics.createdAt,
-        id: topics.id,
-        metadata: topics.metadata,
-        seq: taskTopics.seq,
-        status: taskTopics.status,
-        title: topics.title,
-      })
-      .from(taskTopics)
-      .innerJoin(topics, eq(taskTopics.topicId, topics.id))
-      .where(eq(taskTopics.taskId, taskId))
-      .orderBy(desc(taskTopics.seq))
-      .limit(limit);
-  }
-
-  async addTopic(
-    taskId: string,
-    topicId: string,
-    params: { operationId?: string; seq: number },
-  ): Promise<void> {
-    await this.db
-      .insert(taskTopics)
-      .values({ operationId: params.operationId, seq: params.seq, taskId, topicId })
-      .onConflictDoNothing();
-  }
-
-  async updateTopicStatus(taskId: string, topicId: string, status: string): Promise<void> {
-    await this.db
-      .update(taskTopics)
-      .set({ status })
-      .where(and(eq(taskTopics.taskId, taskId), eq(taskTopics.topicId, topicId)));
-  }
-
-  async updateTopicReview(
-    taskId: string,
-    topicId: string,
-    review: {
-      iteration: number;
-      passed: boolean;
-      score: number;
-      scores: any[];
-    },
-  ): Promise<void> {
-    await this.db
-      .update(taskTopics)
-      .set({
-        reviewIteration: review.iteration,
-        reviewPassed: review.passed ? 1 : 0,
-        reviewScore: review.score,
-        reviewScores: review.scores,
-        reviewedAt: new Date(),
-      })
-      .where(and(eq(taskTopics.taskId, taskId), eq(taskTopics.topicId, topicId)));
-  }
-
-  async timeoutRunningTopics(taskId: string): Promise<number> {
-    const result = await this.db
-      .update(taskTopics)
-      .set({ status: 'timeout' })
-      .where(and(eq(taskTopics.taskId, taskId), eq(taskTopics.status, 'running')))
-      .returning();
-    return result.length;
-  }
-
-  async getTopics(taskId: string): Promise<TaskTopicItem[]> {
-    return this.db
-      .select()
-      .from(taskTopics)
-      .where(eq(taskTopics.taskId, taskId))
-      .orderBy(desc(taskTopics.seq));
-  }
-
-  async removeTopic(taskId: string, topicId: string): Promise<boolean> {
-    const result = await this.db
-      .delete(taskTopics)
-      .where(and(eq(taskTopics.taskId, taskId), eq(taskTopics.topicId, topicId)))
-      .returning();
-
-    if (result.length > 0) {
-      // Decrement topic count
-      await this.db
-        .update(tasks)
-        .set({
-          totalTopics: sql`GREATEST(${tasks.totalTopics} - 1, 0)`,
-          updatedAt: new Date(),
-        })
-        .where(eq(tasks.id, taskId));
-    }
-
-    return result.length > 0;
-  }
-
   // ========== Comments ==========
 
   async addComment(data: Omit<NewTaskComment, 'id'>): Promise<TaskCommentItem> {
     const [comment] = await this.db.insert(taskComments).values(data).returning();
     return comment;
   }
+
+  // ========== Comments ==========
 
   async getComments(taskId: string): Promise<TaskCommentItem[]> {
     return this.db

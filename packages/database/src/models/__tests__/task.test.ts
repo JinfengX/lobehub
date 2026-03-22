@@ -586,63 +586,6 @@ describe('TaskModel', () => {
       const found = await model.findById(task.id);
       expect(found!.currentTopicId).toBe('topic-123');
     });
-
-    it('should add topic and get topics', async () => {
-      const model = new TaskModel(serverDB, userId);
-      const task = await model.create({ instruction: 'Test' });
-
-      await model.addTopic(task.id, 'tpc_aaa', { operationId: 'op_1', seq: 1 });
-      await model.addTopic(task.id, 'tpc_bbb', { operationId: 'op_2', seq: 2 });
-
-      const topics = await model.getTopics(task.id);
-      expect(topics).toHaveLength(2);
-      expect(topics[0].seq).toBe(2); // ordered by seq desc
-      expect(topics[1].seq).toBe(1);
-      expect(topics[0].operationId).toBe('op_2');
-    });
-
-    it('should not duplicate topic (onConflictDoNothing)', async () => {
-      const model = new TaskModel(serverDB, userId);
-      const task = await model.create({ instruction: 'Test' });
-
-      await model.addTopic(task.id, 'tpc_aaa', { seq: 1 });
-      await model.addTopic(task.id, 'tpc_aaa', { seq: 1 }); // duplicate
-
-      const topics = await model.getTopics(task.id);
-      expect(topics).toHaveLength(1);
-    });
-
-    it('should update topic status', async () => {
-      const model = new TaskModel(serverDB, userId);
-      const task = await model.create({ instruction: 'Test' });
-
-      await model.addTopic(task.id, 'tpc_aaa', { seq: 1 });
-
-      await model.updateTopicStatus(task.id, 'tpc_aaa', 'completed');
-
-      const topics = await model.getTopics(task.id);
-      expect(topics[0].status).toBe('completed');
-    });
-
-    it('should timeout running topics', async () => {
-      const model = new TaskModel(serverDB, userId);
-      const task = await model.create({ instruction: 'Test' });
-
-      await model.addTopic(task.id, 'tpc_aaa', { seq: 1 });
-      await model.addTopic(task.id, 'tpc_bbb', { seq: 2 });
-      // Mark one as completed
-      await model.updateTopicStatus(task.id, 'tpc_aaa', 'completed');
-
-      // Only running topics should be timed out
-      const count = await model.timeoutRunningTopics(task.id);
-      expect(count).toBe(1);
-
-      const topics = await model.getTopics(task.id);
-      const tpcA = topics.find((t) => t.topicId === 'tpc_aaa');
-      const tpcB = topics.find((t) => t.topicId === 'tpc_bbb');
-      expect(tpcA!.status).toBe('completed');
-      expect(tpcB!.status).toBe('timeout');
-    });
   });
 
   describe('deleteAll', () => {
@@ -856,33 +799,6 @@ describe('TaskModel', () => {
       expect(childReview).toBeDefined();
       expect(childReview!.rubrics).toHaveLength(1);
       expect(childReview!.rubrics[0].type).toBe('llm-rubric');
-    });
-
-    it('should update topic review with rubric results', async () => {
-      const model = new TaskModel(serverDB, userId);
-      const task = await model.create({ instruction: 'Test' });
-      await model.addTopic(task.id, 'tpc_review', { seq: 1 });
-
-      await model.updateTopicReview(task.id, 'tpc_review', {
-        iteration: 1,
-        passed: true,
-        score: 85,
-        scores: [
-          { passed: true, reason: 'Good accuracy', rubricId: 'r1', score: 0.88 },
-          { passed: true, reason: 'Code found', rubricId: 'r2', score: 1 },
-        ],
-      });
-
-      const topics = await model.getTopics(task.id);
-      expect(topics[0].reviewPassed).toBe(1);
-      expect(topics[0].reviewScore).toBe(85);
-      expect(topics[0].reviewIteration).toBe(1);
-      expect(topics[0].reviewedAt).toBeDefined();
-
-      const scores = topics[0].reviewScores as any[];
-      expect(scores).toHaveLength(2);
-      expect(scores[0].rubricId).toBe('r1');
-      expect(scores[1].score).toBe(1);
     });
   });
 });

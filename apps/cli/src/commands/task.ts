@@ -154,15 +154,13 @@ export function registerTaskCommand(program: Command) {
       console.log(
         `${pc.dim('Topics:')} ${t.totalTopics}  ${pc.dim('Created:')} ${timeAgo(t.createdAt)}`,
       );
-      if (t.lastHeartbeatAt) {
+      if (t.heartbeatTimeout && t.lastHeartbeatAt) {
         const hb = timeAgo(t.lastHeartbeatAt);
         const interval = t.heartbeatInterval ? `${t.heartbeatInterval}s` : '-';
-        const timeout = t.heartbeatTimeout ? `${t.heartbeatTimeout}s` : 'off';
         const elapsed = (Date.now() - new Date(t.lastHeartbeatAt).getTime()) / 1000;
-        const isStuck =
-          t.status === 'running' && t.heartbeatTimeout && elapsed > t.heartbeatTimeout;
+        const isStuck = t.status === 'running' && elapsed > t.heartbeatTimeout;
         console.log(
-          `${pc.dim('Heartbeat:')} ${isStuck ? pc.red(hb) : hb}  ${pc.dim('interval:')} ${interval}  ${pc.dim('timeout:')} ${timeout}${isStuck ? pc.red('  ⚠ TIMEOUT — run `lh task watchdog` to clean up') : ''}`,
+          `${pc.dim('Heartbeat:')} ${isStuck ? pc.red(hb) : hb}  ${pc.dim('interval:')} ${interval}  ${pc.dim('timeout:')} ${t.heartbeatTimeout}s${isStuck ? pc.red('  ⚠ TIMEOUT') : ''}`,
         );
       }
       if (t.error) console.log(`${pc.red('Error:')} ${t.error}`);
