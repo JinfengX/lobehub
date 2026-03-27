@@ -22,6 +22,7 @@ import AgentProfilePage from '@/routes/(main)/agent/profile';
 import CommunityLayout from '@/routes/(main)/community/_layout';
 import CommunityDetailLayout from '@/routes/(main)/community/(detail)/_layout';
 import CommunityDetailAgentPage from '@/routes/(main)/community/(detail)/agent';
+import CommunityDetailCollectionPage from '@/routes/(main)/community/(detail)/collection';
 import CommunityDetailGroupAgentPage from '@/routes/(main)/community/(detail)/group_agent';
 import CommunityDetailMcpPage from '@/routes/(main)/community/(detail)/mcp';
 import CommunityDetailModelPage from '@/routes/(main)/community/(detail)/model';
@@ -216,6 +217,10 @@ export const desktopRoutes: RouteObject[] = [
               {
                 element: <CommunityDetailSkillPage />,
                 path: 'skill/:slug',
+              },
+              {
+                element: <CommunityDetailCollectionPage />,
+                path: 'collection/:slug',
               },
               {
                 element: <CommunityDetailMcpPage />,

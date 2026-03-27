@@ -94,3 +94,25 @@ export interface DiscoverSkillDetail extends MarketSkillDetail {
 }
 
 export type SkillCategoryItem = MarketSkillCategory;
+
+// ============================== Skill Collections ==============================
+
+export interface SkillCollectionItem {
+  coverUrl?: string;
+  createdAt?: string;
+  description: string;
+  icon?: string;
+  id: number;
+  itemCount: number;
+  position?: number;
+  slug: string;
+  title: string;
+  updatedAt?: string;
+}
+
+export interface SkillCollectionDetail extends SkillCollectionItem {
+  items?: DiscoverSkillItem[];
+  skills?: DiscoverSkillItem[];
+}
+
+export type SkillCollectionListResponse = SkillCollectionItem[];

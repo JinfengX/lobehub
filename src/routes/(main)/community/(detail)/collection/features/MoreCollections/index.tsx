@@ -18,7 +18,7 @@ const styles = createStaticStyles(({ css }) => ({
 
     overflow: hidden;
 
-    height: 180px;
+    height: 160px;
     padding: 20px;
     border-radius: 12px;
   `,
@@ -97,21 +97,25 @@ const CollectionCard = memo<CollectionCardProps>(({ title, description, slug, co
   );
 });
 
-const CollectionsSection = memo(() => {
+interface MoreCollectionsProps {
+  currentSlug: string;
+}
+
+const MoreCollections = memo<MoreCollectionsProps>(({ currentSlug }) => {
   const { t } = useTranslation('discover');
   const useFetchSkillCollections = useDiscoverStore((s) => s.useFetchSkillCollections);
   const { data, isLoading } = useFetchSkillCollections();
 
-  // Skip the first collection since it's shown in EditorsPick
-  const collections = data?.slice(1) || [];
+  if (isLoading || !data || data.length === 0) return null;
 
-  if (isLoading || collections.length === 0) return null;
+  const otherCollections = data.filter((c) => c.slug !== currentSlug);
+  if (otherCollections.length === 0) return null;
 
   return (
-    <Flexbox gap={16}>
-      <Title>{t('skills.sections.collections')}</Title>
-      <Grid maxItemWidth={400} rows={2} width={'100%'}>
-        {collections.slice(0, 4).map((item) => (
+    <Flexbox gap={16} style={{ maxWidth: 720, margin: '0 auto', width: '100%' }}>
+      <Title>{t('skills.collection.moreCollections')}</Title>
+      <Grid maxItemWidth={340} rows={2} width={'100%'}>
+        {otherCollections.slice(0, 4).map((item) => (
           <CollectionCard key={item.slug} {...item} />
         ))}
       </Grid>
@@ -119,4 +123,4 @@ const CollectionsSection = memo(() => {
   );
 });
 
-export default CollectionsSection;
+export default MoreCollections;

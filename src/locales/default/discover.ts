@@ -1131,6 +1131,23 @@ export default {
 
   'skills.tabs.trending': 'Trending',
 
+  'skills.collection.editorCollection': "EDITOR'S COLLECTION",
+
+  'skills.collection.get': 'Get',
+
+  'skills.collection.installAll': 'Install all skills',
+
+  'skills.collection.installDesc':
+    'Get all {{count}} skills installed at once. Your agent will walk you through each one.',
+
+  'skills.collection.installTitle': 'Install the full collection',
+
+  'skills.collection.moreCollections': 'More collections',
+
+  'skills.collection.skillCount': '{{count}} skills',
+
+  'skills.collection.skillsInCollection': 'Skills in this collection',
+
   'skills.sorts.createdAt': 'Recently Published',
 
   'skills.sorts.installCount': 'Downloads',

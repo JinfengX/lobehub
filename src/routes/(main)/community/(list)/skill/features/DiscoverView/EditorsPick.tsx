@@ -1,12 +1,15 @@
 'use client';
 
 import { Button, Flexbox } from '@lobehub/ui';
-import { Tag } from 'antd';
+import { Skeleton, Tag } from 'antd';
 import { createStaticStyles, cx, responsive } from 'antd-style';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import urlJoin from 'url-join';
 
 import { useIsDark } from '@/hooks/useIsDark';
+import { useDiscoverStore } from '@/store/discover';
 
 const styles = createStaticStyles(({ css }) => ({
   banner: css`
@@ -47,8 +50,8 @@ const styles = createStaticStyles(({ css }) => ({
   tag: css`
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
   `,
   title: css`
     margin: 0;
@@ -71,18 +74,46 @@ const styles = createStaticStyles(({ css }) => ({
 const EditorsPick = memo(() => {
   const { t } = useTranslation('discover');
   const isDark = useIsDark();
+  const navigate = useNavigate();
+  const useFetchSkillCollections = useDiscoverStore((s) => s.useFetchSkillCollections);
+  const { data, isLoading } = useFetchSkillCollections();
+
+  const collection = data?.[0];
+
+  const handleLearnMore = useCallback(() => {
+    if (collection?.slug) {
+      navigate(urlJoin('/community/collection', collection.slug));
+    }
+  }, [navigate, collection?.slug]);
+
+  if (isLoading) {
+    return (
+      <Flexbox
+        className={cx(styles.banner, isDark ? styles.banner_dark : styles.banner_light)}
+        width={'100%'}
+      >
+        <Flexbox gap={12} style={{ maxWidth: 500 }}>
+          <Skeleton.Button active size="small" style={{ width: 80 }} />
+          <Skeleton.Input active size="large" style={{ width: 300 }} />
+          <Skeleton active paragraph={{ rows: 2 }} title={false} />
+        </Flexbox>
+      </Flexbox>
+    );
+  }
+
+  if (!collection) return null;
 
   return (
     <Flexbox
       className={cx(styles.banner, isDark ? styles.banner_dark : styles.banner_light)}
       width={'100%'}
     >
-      <Flexbox gap={12} style={{ maxWidth: 500, position: 'relative', zIndex: 1 }}>
+      <Flexbox gap={12} style={{ maxWidth: 600, position: 'relative', zIndex: 1 }}>
         <Tag className={styles.tag} color={isDark ? 'default' : 'default'}>
           {t('skills.sections.editorsPick')}
         </Tag>
         <h2 className={cx(styles.title, isDark ? styles.title_dark : styles.title_light)}>
-          {t('skills.sections.editorsPickTitle')}
+          {collection.title}
         </h2>
         <p
           className={cx(
@@ -90,13 +121,13 @@ const EditorsPick = memo(() => {
             isDark ? styles.description_dark : styles.description_light,
           )}
         >
-          {t('skills.sections.editorsPickDesc')}
+          {collection.description}
         </p>
         <Flexbox horizontal gap={12} style={{ marginBlockStart: 8 }}>
-          <Button style={{ background: isDark ? '#fff' : '#fff', color: '#000' }} type="primary">
-            {t('skills.sections.getSkill')}
-          </Button>
-          <Button style={{ background: isDark ? '#333' : '#333', color: '#fff' }}>
+          <Button
+            style={{ background: isDark ? '#333' : '#333', color: '#fff' }}
+            onClick={handleLearnMore}
+          >
             {t('skills.sections.learnMore')}
           </Button>
         </Flexbox>
