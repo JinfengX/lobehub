@@ -1,7 +1,7 @@
 export interface BriefAction {
   /** Action identifier, e.g. 'approve', 'reject', 'feedback' */
   key: string;
-  /** Display label, e.g. "✅ 确认开始", "💬 修改意见" */
+  /** Display label, e.g. "✅ Confirm start", "💬 Leave feedback" */
   label: string;
   /**
    * Action type:

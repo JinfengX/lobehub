@@ -94,7 +94,7 @@ const StatusBadge = memo<{ record: any }>(({ record }) => {
   }
 
   if (status === 'completed') {
-    // 完成代表运行完成 + 评测完成，不代表结果一定通过
+    // Completed means both the run and evaluation are done; it does not imply the result passed
     const badge = <Badge color="blue" text={<BadgeText>{t('run.status.completed')}</BadgeText>} />;
     return <Tooltip title={t('run.status.completed.tooltip')}>{badge}</Tooltip>;
   }

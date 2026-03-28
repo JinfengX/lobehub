@@ -24,7 +24,7 @@ export default ({ token }: { prefixCls: string; token: Theme }) => css`
   }
 
   body {
-    /* 提高合成层级，强制硬件加速，否则会有渲染黑边出现 */
+    /* Promote compositing layer and force hardware acceleration to prevent rendering black borders */
     will-change: opacity;
     transform: translateZ(0);
   }

@@ -27,7 +27,7 @@ const ThreadHydration = memo(() => {
     return () => {
       unsubscribe();
     };
-  }, [setThread]); // ✅ 现在 setValue 是稳定的，可以安全地添加到依赖数组
+  }, [setThread]); // ✅ setValue is now stable and can be safely added to the dependency array
 
   // should open portal automatically when portalThread is set
   useEffect(() => {
