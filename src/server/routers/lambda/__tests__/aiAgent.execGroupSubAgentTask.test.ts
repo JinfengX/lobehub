@@ -32,6 +32,13 @@ vi.mock('@/server/services/aiChat', () => ({
   AiChatService: vi.fn().mockImplementation(() => ({})),
 }));
 
+// Mock FileService to avoid S3 dependency
+vi.mock('@/server/services/file', () => ({
+  FileService: vi.fn().mockImplementation(() => ({
+    getFullFileUrl: vi.fn((path: string | null) => path),
+  })),
+}));
+
 describe('aiAgentRouter.execSubAgentTask', () => {
   let serverDB: LobeChatDatabase;
   let userId: string;

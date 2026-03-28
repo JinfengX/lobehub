@@ -236,11 +236,7 @@ const InterruptTaskSchema = z
 const aiAgentProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
-  let fileService: FileService | undefined;
-  const getFileService = () => {
-    if (!fileService) fileService = new FileService(ctx.serverDB, ctx.userId);
-    return fileService;
-  };
+  const fileService = new FileService(ctx.serverDB, ctx.userId);
 
   return opts.next({
     ctx: {
@@ -248,7 +244,7 @@ const aiAgentProcedure = authedProcedure.use(serverDatabase).use(async (opts) =>
       aiAgentService: new AiAgentService(ctx.serverDB, ctx.userId),
       aiChatService: new AiChatService(ctx.serverDB, ctx.userId),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, {
-        postProcessUrl: (path) => getFileService().getFullFileUrl(path),
+        postProcessUrl: (path) => fileService.getFullFileUrl(path),
       }),
       threadModel: new ThreadModel(ctx.serverDB, ctx.userId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId),

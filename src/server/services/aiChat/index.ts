@@ -12,12 +12,9 @@ export class AiChatService {
   constructor(serverDB: LobeChatDatabase, userId: string) {
     this.userId = userId;
 
-    let fileService: FileService | undefined;
+    const fileService = new FileService(serverDB, userId);
     this.messageModel = new MessageModel(serverDB, userId, {
-      postProcessUrl: (path) => {
-        if (!fileService) fileService = new FileService(serverDB, userId);
-        return fileService.getFullFileUrl(path);
-      },
+      postProcessUrl: (path) => fileService.getFullFileUrl(path),
     });
     this.topicModel = new TopicModel(serverDB, userId);
   }

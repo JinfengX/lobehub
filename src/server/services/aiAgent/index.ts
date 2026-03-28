@@ -200,12 +200,9 @@ export class AiAgentService {
     this.agentDocumentsService = new AgentDocumentsService(db, userId);
     this.agentModel = new AgentModel(db, userId);
     this.agentService = new AgentService(db, userId);
-    let fileService: FileService | undefined;
+    const fileService = new FileService(db, userId);
     this.messageModel = new MessageModel(db, userId, {
-      postProcessUrl: (path) => {
-        if (!fileService) fileService = new FileService(db, userId);
-        return fileService.getFullFileUrl(path);
-      },
+      postProcessUrl: (path) => fileService.getFullFileUrl(path),
     });
     this.pluginModel = new PluginModel(db, userId);
     this.threadModel = new ThreadModel(db, userId);

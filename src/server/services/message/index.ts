@@ -34,12 +34,9 @@ export class MessageService {
   private compressionRepository: CompressionRepository;
 
   constructor(db: LobeChatDatabase, userId: string) {
-    let fileService: FileService | undefined;
+    const fileService = new FileService(db, userId);
     this.messageModel = new MessageModel(db, userId, {
-      postProcessUrl: (path) => {
-        if (!fileService) fileService = new FileService(db, userId);
-        return fileService.getFullFileUrl(path);
-      },
+      postProcessUrl: (path) => fileService.getFullFileUrl(path),
     });
     this.compressionRepository = new CompressionRepository(db, userId);
   }
