@@ -6,7 +6,7 @@ import { ChatGroupModel } from '@/database/models/chatGroup';
 import { UserModel } from '@/database/models/user';
 import { AgentGroupRepository } from '@/database/repositories/agentGroup';
 import { type ChatGroupConfig } from '@/database/types/chatGroup';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { AgentGroupService } from '@/server/services/agentGroup';
 
@@ -39,7 +39,7 @@ const agentMemberInputSchema = z
   })
   .partial();
 
-const agentGroupProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const agentGroupProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({

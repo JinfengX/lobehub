@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { MessageModel } from '@/database/models/message';
 import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { AiAgentService } from '@/server/services/aiAgent';
@@ -232,7 +232,7 @@ const InterruptTaskSchema = z
     message: 'Either threadId or operationId must be provided',
   });
 
-const aiAgentProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const aiAgentProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({

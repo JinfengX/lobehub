@@ -10,11 +10,11 @@ import { KnowledgeBaseModel } from '@/database/models/knowledgeBase';
 import { SessionModel } from '@/database/models/session';
 import { UserModel } from '@/database/models/user';
 import { insertAgentSchema } from '@/database/schemas';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { authedProcedure, router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { AgentService } from '@/server/services/agent';
 
-const agentProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const agentProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({

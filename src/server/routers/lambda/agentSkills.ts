@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { AgentSkillModel } from '@/database/models/agentSkill';
 import { FileModel } from '@/database/models/file';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
 import { MarketService } from '@/server/services/market';
@@ -53,7 +53,7 @@ const handleSkillImportError = (error: unknown): never => {
 
 // ===== Procedure with Context =====
 
-const skillProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const skillProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({
