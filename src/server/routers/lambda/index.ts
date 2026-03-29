@@ -60,6 +60,7 @@ import { workspaceAuditLogRouter } from './workspaceAuditLog';
 import { workspaceDataRouter } from './workspaceData';
 import { workspaceUsageRouter } from './workspaceUsage';
 import { workspaceMemberRouter } from './workspaceMember';
+import { workspaceSecurityRouter } from './workspaceSecurity';
 
 export const lambdaRouter = router({
   agent: agentRouter,
@@ -114,6 +115,7 @@ export const lambdaRouter = router({
   workspaceAuditLog: workspaceAuditLogRouter,
   workspaceData: workspaceDataRouter,
   workspaceMember: workspaceMemberRouter,
+  workspaceSecurity: workspaceSecurityRouter,
   workspaceUsage: workspaceUsageRouter,
   accountDeletion: accountDeletionRouter,
   referral: referralRouter,
