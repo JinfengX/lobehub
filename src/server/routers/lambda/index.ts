@@ -58,6 +58,7 @@ import { videoRouter } from './video';
 import { workspaceRouter } from './workspace';
 import { workspaceAuditLogRouter } from './workspaceAuditLog';
 import { workspaceDataRouter } from './workspaceData';
+import { workspaceUsageRouter } from './workspaceUsage';
 import { workspaceMemberRouter } from './workspaceMember';
 
 export const lambdaRouter = router({
@@ -113,6 +114,7 @@ export const lambdaRouter = router({
   workspaceAuditLog: workspaceAuditLogRouter,
   workspaceData: workspaceDataRouter,
   workspaceMember: workspaceMemberRouter,
+  workspaceUsage: workspaceUsageRouter,
   accountDeletion: accountDeletionRouter,
   referral: referralRouter,
   spend: spendRouter,
