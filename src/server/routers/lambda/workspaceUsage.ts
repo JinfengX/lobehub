@@ -39,10 +39,10 @@ export const workspaceUsageRouter = router({
     ]);
 
     return {
-      agentCount: memberCount[0]?.count ?? 0,
+      agentCount: agentCount[0]?.count ?? 0,
       fileCount: fileStats[0]?.count ?? 0,
       knowledgeBaseCount: kbCount[0]?.count ?? 0,
-      memberCount: agentCount[0]?.count ?? 0,
+      memberCount: memberCount[0]?.count ?? 0,
       storageUsedBytes: Number(fileStats[0]?.totalSize ?? 0),
     };
   }),

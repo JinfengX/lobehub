@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   type NewWorkspace,
@@ -66,26 +66,10 @@ export class WorkspaceModel {
 
     const workspaceIds = members.map((m) => m.workspaceId);
 
-    const results = await this.db
+    return this.db
       .select()
       .from(workspaces)
-      .where(
-        workspaceIds.length === 1
-          ? eq(workspaces.id, workspaceIds[0])
-          : // For multiple IDs, use IN clause via sql
-            eq(workspaces.id, workspaceIds[0]), // simplified — will enhance with inArray
-      );
-
-    // Actually use proper query for multiple:
-    const allWorkspaces = [];
-    for (const wsId of workspaceIds) {
-      const ws = await this.db.query.workspaces.findFirst({
-        where: eq(workspaces.id, wsId),
-      });
-      if (ws) allWorkspaces.push(ws);
-    }
-
-    return allWorkspaces;
+      .where(inArray(workspaces.id, workspaceIds));
   };
 
   update = async (id: string, value: Partial<Pick<WorkspaceItem, 'name' | 'slug' | 'description' | 'avatar' | 'settings'>>) => {

@@ -38,7 +38,7 @@ export const workspaceAuth = trpc.middleware(async (opts) => {
   const serverDB = await getServerDB();
 
   // Get workspaceId from context (extracted from X-Workspace-Id header in createLambdaContext)
-  let workspaceId = (ctx as any).workspaceId as string | undefined;
+  let workspaceId = ctx.workspaceId as string | undefined;
 
   // Fall back to personal workspace if no workspace specified
   if (!workspaceId) {

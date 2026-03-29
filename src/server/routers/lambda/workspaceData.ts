@@ -116,9 +116,23 @@ export const workspaceDataRouter = router({
                 ? `${agentData.slug}-imported-${Date.now()}`
                 : agentData.slug;
 
+            // Only pick safe fields — prevent id/userId/workspaceId override
             await ctx.serverDB.insert(agents).values({
-              ...agentData,
+              avatar: agentData.avatar,
+              backgroundColor: agentData.backgroundColor,
+              chatConfig: agentData.chatConfig,
+              description: agentData.description,
+              fewShots: agentData.fewShots,
+              model: agentData.model,
+              openingMessage: agentData.openingMessage,
+              openingQuestions: agentData.openingQuestions,
+              params: agentData.params,
+              plugins: agentData.plugins,
+              provider: agentData.provider,
               slug,
+              systemRole: agentData.systemRole,
+              tags: agentData.tags,
+              title: agentData.title,
               userId: ctx.userId,
               workspaceId: ctx.workspaceId,
             });
@@ -133,8 +147,14 @@ export const workspaceDataRouter = router({
       if (data.knowledgeBases?.length) {
         for (const kbData of data.knowledgeBases) {
           try {
+            // Only pick safe fields
             await ctx.serverDB.insert(knowledgeBases).values({
-              ...kbData,
+              avatar: kbData.avatar,
+              description: kbData.description,
+              isPublic: kbData.isPublic,
+              name: kbData.name,
+              settings: kbData.settings,
+              type: kbData.type,
               userId: ctx.userId,
               workspaceId: ctx.workspaceId,
             });

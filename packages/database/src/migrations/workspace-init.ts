@@ -73,6 +73,7 @@ async function backfillTable(
   let batchUpdated: number;
 
   do {
+    // PostgreSQL doesn't support UPDATE ... LIMIT, so use a subquery with ctid
     const result = await db.execute(sql.raw(`
       UPDATE ${tableName} t
       SET workspace_id = w.id
@@ -80,7 +81,11 @@ async function backfillTable(
       WHERE w.owner_id = t.user_id
         AND w.type = 'personal'
         AND t.workspace_id IS NULL
-      LIMIT ${BATCH_SIZE}
+        AND t.ctid IN (
+          SELECT t2.ctid FROM ${tableName} t2
+          WHERE t2.workspace_id IS NULL
+          LIMIT ${BATCH_SIZE}
+        )
     `));
 
     batchUpdated = result.rowCount ?? 0;
