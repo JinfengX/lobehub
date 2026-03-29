@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AiProviderModel } from '@/database/models/aiProvider';
 import { UserModel } from '@/database/models/user';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { getServerGlobalConfig } from '@/server/globalConfig';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
@@ -17,7 +17,7 @@ import {
 } from '@/types/aiProvider';
 import { type ProviderConfig } from '@/types/user/settings';
 
-const aiProviderProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const aiProviderProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   const { aiProvider } = await getServerGlobalConfig();

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 import { ApiKeyModel } from '@/database/models/apiKey';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
-const apiKeyProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const apiKeyProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({
