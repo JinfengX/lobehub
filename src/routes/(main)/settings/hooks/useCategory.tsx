@@ -5,6 +5,7 @@ import {
   // BellIcon,
   Brain,
   BrainCircuit,
+  Building2,
   ChartColumnBigIcon,
   Coins,
   CreditCard,
@@ -85,6 +86,11 @@ export const useCategory = () => {
         icon: avatarUrl ? <Avatar avatar={avatarUrl} shape={'square'} size={26} /> : undefined,
         key: SettingsTabs.Profile,
         label: username ? username : tAuth('tab.profile'),
+      },
+      {
+        icon: Building2,
+        key: SettingsTabs.Workspace,
+        label: t('tab.workspace'),
       },
       {
         icon: ChartColumnBigIcon,

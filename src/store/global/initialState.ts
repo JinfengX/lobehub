@@ -73,6 +73,7 @@ export enum SettingsTabs {
   /** @deprecated Use ServiceModel instead */
   TTS = 'tts',
   Usage = 'usage',
+  Workspace = 'workspace',
 }
 
 /**
