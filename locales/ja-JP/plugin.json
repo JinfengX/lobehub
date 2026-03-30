@@ -34,7 +34,7 @@
   "builtins.lobe-agent-documents.apiName.removeDocument": "文書を削除",
   "builtins.lobe-agent-documents.apiName.renameDocument": "文書の名前を変更",
   "builtins.lobe-agent-documents.apiName.updateLoadRule": "ロードルールを更新",
-  "builtins.lobe-agent-documents.apiName.upsertDocumentByFilename": "ファイル名でドキュメントを更新または挿入",
+  "builtins.lobe-agent-documents.apiName.upsertDocumentByFilename": "ファイル名でドキュメントを挿入または更新",
   "builtins.lobe-agent-documents.title": "エージェント文書",
   "builtins.lobe-agent-management.apiName.callAgent": "エージェントを呼び出す",
   "builtins.lobe-agent-management.apiName.createAgent": "エージェントを作成する",

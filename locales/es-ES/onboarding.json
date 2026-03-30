@@ -1,6 +1,6 @@
 {
   "agent.banner.label": "Incorporación del Agente",
-  "agent.completionSubtitle": "Tu asistente está configurado y listo para comenzar.",
+  "agent.completionSubtitle": "Tu asistente está configurado y listo para usar.",
   "agent.completionTitle": "¡Todo Listo!",
   "agent.enterApp": "Entrar a la Aplicación",
   "agent.greeting.emojiLabel": "Emoji",
@@ -19,7 +19,7 @@
   "agent.progress": "{{currentStep}}/{{totalSteps}}",
   "agent.skipOnboarding": "Omitir incorporación",
   "agent.stage.agentIdentity": "Identidad del Agente",
-  "agent.stage.painPoints": "Puntos Problemáticos",
+  "agent.stage.painPoints": "Puntos de Dolor",
   "agent.stage.proSettings": "Configuración Avanzada",
   "agent.stage.responseLanguage": "Idioma de Respuesta",
   "agent.stage.summary": "Resumen",

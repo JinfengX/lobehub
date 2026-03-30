@@ -14,7 +14,7 @@
   "agent.modeSwitch.agent": "Conversatie",
   "agent.modeSwitch.classic": "Klassiek",
   "agent.modeSwitch.debug": "Debug Export",
-  "agent.modeSwitch.label": "Kies je onboarding modus",
+  "agent.modeSwitch.label": "Kies je onboardingmodus",
   "agent.modeSwitch.reset": "Flow Resetten",
   "agent.progress": "{{currentStep}}/{{totalSteps}}",
   "agent.skipOnboarding": "Onboarding overslaan",

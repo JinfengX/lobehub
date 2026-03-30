@@ -19,7 +19,7 @@
   "agent.progress": "{{currentStep}}/{{totalSteps}}",
   "agent.skipOnboarding": "Bỏ qua đăng ký",
   "agent.stage.agentIdentity": "Danh tính Đại lý",
-  "agent.stage.painPoints": "Điểm đau",
+  "agent.stage.painPoints": "Điểm khó khăn",
   "agent.stage.proSettings": "Cài đặt Nâng cao",
   "agent.stage.responseLanguage": "Ngôn ngữ Phản hồi",
   "agent.stage.summary": "Tóm tắt",

@@ -175,7 +175,7 @@
   "messageAction.delAndRegenerate": "حذف وإعادة التوليد",
   "messageAction.deleteDisabledByThreads": "لا يمكن حذف هذه الرسالة لأنها تحتوي على موضوع فرعي",
   "messageAction.expand": "توسيع الرسالة",
-  "messageAction.interrupted": "تم الإيقاف",
+  "messageAction.interrupted": "مقاطعة",
   "messageAction.interruptedHint": "ماذا يجب أن أفعل بدلاً من ذلك؟",
   "messageAction.reaction": "إضافة تفاعل",
   "messageAction.regenerate": "إعادة التوليد",

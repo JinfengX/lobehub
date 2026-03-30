@@ -411,7 +411,7 @@
   "tool.intervention.mode.autoRunDesc": "Автоматически одобрять все вызовы инструментов",
   "tool.intervention.mode.manual": "Вручную",
   "tool.intervention.mode.manualDesc": "Требуется ручное одобрение каждого вызова",
-  "tool.intervention.pending": "В ожидании",
+  "tool.intervention.pending": "Ожидание",
   "tool.intervention.reject": "Отклонить",
   "tool.intervention.rejectAndContinue": "Отклонить и повторить",
   "tool.intervention.rejectOnly": "Отклонить",

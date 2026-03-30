@@ -34,7 +34,7 @@
   "builtins.lobe-agent-documents.apiName.removeDocument": "문서 삭제",
   "builtins.lobe-agent-documents.apiName.renameDocument": "문서 이름 변경",
   "builtins.lobe-agent-documents.apiName.updateLoadRule": "로드 규칙 업데이트",
-  "builtins.lobe-agent-documents.apiName.upsertDocumentByFilename": "파일 이름으로 문서 삽입 또는 업데이트",
+  "builtins.lobe-agent-documents.apiName.upsertDocumentByFilename": "파일 이름으로 문서 삽입/업데이트",
   "builtins.lobe-agent-documents.title": "에이전트 문서",
   "builtins.lobe-agent-management.apiName.callAgent": "통화 에이전트",
   "builtins.lobe-agent-management.apiName.createAgent": "에이전트 생성",
