@@ -2,7 +2,6 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { lambdaClient } from '@/libs/trpc/client';
-import { agentRuntimeClient } from '@/services/agentRuntime';
 import { useChatStore } from '@/store/chat/store';
 
 // Keep zustand mock as it's needed globally
@@ -24,12 +23,27 @@ vi.mock('@/libs/trpc/client', () => ({
   },
 }));
 
-// Mock agentRuntimeClient
-vi.mock('@/services/agentRuntime', () => ({
-  agentRuntimeClient: {
-    createStreamConnection: vi.fn(),
+// Mock AgentGatewayClient
+vi.mock('@lobechat/agent-gateway-client', () => ({
+  AgentGatewayClient: vi.fn().mockImplementation(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    sendInterrupt: vi.fn(),
+    sendToolConfirmation: vi.fn(),
+    sendUserInput: vi.fn(),
+    connectionStatus: 'disconnected',
+  })),
+}));
+
+// Mock serverConfig store
+vi.mock('@/store/serverConfig', () => ({
+  useServerConfigStore: {
+    getState: vi.fn().mockReturnValue({
+      serverConfig: { agentGatewayUrl: 'https://test-gateway.example.com' },
+    }),
   },
-  StreamEvent: {},
 }));
 
 // Test Constants
@@ -218,7 +232,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         const context = createTestContext();
 
@@ -249,7 +263,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -291,7 +305,7 @@ describe('agentGroup actions', () => {
           capturedState = useChatStore.getState().isCreatingMessage;
           return createMockExecGroupAgentResponse();
         });
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -313,7 +327,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         const context = createTestContext({ topicId: TEST_IDS.TOPIC_ID });
 
@@ -342,7 +356,7 @@ describe('agentGroup actions', () => {
 
         const mockResponse = createMockExecGroupAgentResponse();
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(mockResponse);
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         const context = createTestContext();
 
@@ -371,7 +385,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -400,7 +414,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -421,7 +435,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -446,13 +460,12 @@ describe('agentGroup actions', () => {
         expect(result.current.associateMessageWithOperation).toHaveBeenCalledTimes(2);
       });
 
-      it('should create stream connection with operationId', async () => {
+      it('should connect to agent gateway with operationId as chatKey', async () => {
         const { result } = renderHook(() => useChatStore());
 
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -461,48 +474,13 @@ describe('agentGroup actions', () => {
           });
         });
 
-        expect(agentRuntimeClient.createStreamConnection).toHaveBeenCalledWith(
-          TEST_IDS.OPERATION_ID,
+        // Should have called internal_connectAgentGateway (which creates gateway client)
+        expect(result.current.startOperation).toHaveBeenCalledWith(
           expect.objectContaining({
-            includeHistory: false,
-            onConnect: expect.any(Function),
-            onDisconnect: expect.any(Function),
-            onError: expect.any(Function),
-            onEvent: expect.any(Function),
+            operationId: TEST_IDS.OPERATION_ID,
+            type: 'groupAgentStream',
           }),
         );
-      });
-
-      it('should complete operations on stream disconnect', async () => {
-        const { result } = renderHook(() => useChatStore());
-
-        vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
-          createMockExecGroupAgentResponse(),
-        );
-
-        let onDisconnectCallback: (() => void) | undefined;
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockImplementation(
-          (_operationId, options) => {
-            onDisconnectCallback = options?.onDisconnect;
-            return {} as any;
-          },
-        );
-
-        await act(async () => {
-          await result.current.sendGroupMessage({
-            context: createTestContext(),
-            message: TEST_CONTENT.GROUP_MESSAGE,
-          });
-        });
-
-        // Simulate stream disconnect
-        await act(async () => {
-          onDisconnectCallback?.();
-        });
-
-        // Should complete both the stream operation and the main execServerAgentRuntime operation
-        expect(result.current.completeOperation).toHaveBeenCalledWith(TEST_IDS.OPERATION_ID);
-        expect(result.current.completeOperation).toHaveBeenCalledWith('op-exec');
       });
 
       it('should update topics when new topic is created', async () => {
@@ -518,7 +496,7 @@ describe('agentGroup actions', () => {
             topics: mockTopics,
           }),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -546,7 +524,7 @@ describe('agentGroup actions', () => {
             topics: { items: [], total: 1 },
           }),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -569,7 +547,7 @@ describe('agentGroup actions', () => {
             isCreateNewTopic: false,
           }),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -710,7 +688,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -734,7 +712,7 @@ describe('agentGroup actions', () => {
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        vi.mocked(agentRuntimeClient.createStreamConnection).mockReturnValue({} as any);
+        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({

@@ -37,8 +37,7 @@ export class ChatGroupChatActionImpl {
       return;
     }
 
-    const { internal_handleAgentStreamEvent, optimisticCreateTmpMessage, startOperation } =
-      this.#get();
+    const { optimisticCreateTmpMessage, startOperation } = this.#get();
 
     log(
       'sendGroupMessage: agentId=%s, groupId=%s, message=%s',

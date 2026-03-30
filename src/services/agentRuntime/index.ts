@@ -7,7 +7,6 @@ import { contextEngineering } from '@/services/chat/mecha';
 import { getAgentStoreState } from '@/store/agent';
 import { agentChatConfigSelectors, agentSelectors } from '@/store/agent/selectors';
 
-export { agentRuntimeClient } from './client';
 export * from './type';
 
 interface AgentOperationRequest {

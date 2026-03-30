@@ -358,9 +358,10 @@ export class AgentActionImpl {
   ): AgentGatewayClient => {
     const { assistantId, execOperationId, streamOperationId } = params;
 
-    // TODO: make gatewayUrl configurable via env/settings
+    // TODO: read from server config when context store accessor is available
     const gatewayUrl = 'https://agent-gateway.lobehub.com';
-    // TODO: get token from auth service
+
+    // TODO: get JWT token from auth session
     const token = '';
 
     const client = new AgentGatewayClient({ gatewayUrl, token });
