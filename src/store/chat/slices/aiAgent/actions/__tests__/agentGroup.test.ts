@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { lambdaClient } from '@/libs/trpc/client';
 import { useChatStore } from '@/store/chat/store';
@@ -37,14 +37,20 @@ vi.mock('@lobechat/agent-gateway-client', () => ({
   })),
 }));
 
-// Mock serverConfig store
-vi.mock('@/store/serverConfig', () => ({
-  useServerConfigStore: {
-    getState: vi.fn().mockReturnValue({
-      serverConfig: { agentGatewayUrl: 'https://test-gateway.example.com' },
-    }),
-  },
-}));
+// Mock global_serverConfigStore on window
+const mockServerConfigStore = {
+  getState: vi.fn().mockReturnValue({
+    serverConfig: { agentGatewayUrl: 'https://test-gateway.example.com' },
+  }),
+};
+
+beforeAll(() => {
+  (window as any).global_serverConfigStore = mockServerConfigStore;
+});
+
+afterAll(() => {
+  delete (window as any).global_serverConfigStore;
+});
 
 // Test Constants
 const TEST_IDS = {
@@ -148,6 +154,12 @@ describe('agentGroup actions', () => {
         onOperationCancel: vi.fn(),
         switchTopic: vi.fn(),
         associateMessageWithOperation: vi.fn(),
+        isAgentGatewayAvailable: vi.fn().mockReturnValue(true),
+        internal_connectAgentGateway: vi.fn().mockReturnValue({
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          sendInterrupt: vi.fn(),
+        }),
       });
     });
   });
@@ -408,13 +420,12 @@ describe('agentGroup actions', () => {
         );
       });
 
-      it('should register cancel handler for SSE stream', async () => {
+      it('should connect to gateway with correct params when gateway is available', async () => {
         const { result } = renderHook(() => useChatStore());
 
         vi.mocked(lambdaClient.aiAgent.execGroupAgent.mutate).mockResolvedValue(
           createMockExecGroupAgentResponse(),
         );
-        // Gateway client is auto-mocked
 
         await act(async () => {
           await result.current.sendGroupMessage({
@@ -423,9 +434,13 @@ describe('agentGroup actions', () => {
           });
         });
 
-        expect(result.current.onOperationCancel).toHaveBeenCalledWith(
-          TEST_IDS.OPERATION_ID,
-          expect.any(Function),
+        expect(result.current.internal_connectAgentGateway).toHaveBeenCalledWith(
+          TEST_IDS.OPERATION_ID, // chatKey = operationId
+          expect.objectContaining({
+            assistantId: TEST_IDS.ASSISTANT_MESSAGE_ID,
+            execOperationId: 'op-exec',
+            streamOperationId: TEST_IDS.OPERATION_ID,
+          }),
         );
       });
 

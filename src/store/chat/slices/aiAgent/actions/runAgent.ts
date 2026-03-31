@@ -1,6 +1,7 @@
 import {
   type AgentEventMessage,
   AgentGatewayClient,
+  type IAgentGatewayClient,
   type InputRequestMessage,
   type SessionCompleteMessage,
   type StatusChangeMessage,
@@ -32,6 +33,15 @@ interface StreamingContext {
 type Setter = StoreSetter<ChatStore>;
 export const agentSlice = (set: Setter, get: () => ChatStore, _api?: unknown) =>
   new AgentActionImpl(set, get, _api);
+
+/**
+ * Read the agent gateway URL from server config.
+ * Returns undefined if not configured (feature disabled).
+ */
+const getAgentGatewayUrl = (): string | undefined => {
+  if (typeof window === 'undefined' || !window.global_serverConfigStore) return undefined;
+  return window.global_serverConfigStore.getState()?.serverConfig?.agentGatewayUrl;
+};
 
 export class AgentActionImpl {
   readonly #get: () => ChatStore;
@@ -345,6 +355,13 @@ export class AgentActionImpl {
   // ─── Agent Gateway (WebSocket) ───
 
   /**
+   * Check if the Agent Gateway is available (configured via server config).
+   */
+  isAgentGatewayAvailable = (): boolean => {
+    return !!getAgentGatewayUrl();
+  };
+
+  /**
    * Connect to Agent Gateway via WebSocket and wire up event handlers.
    * Returns the gateway client instance (stored on the operation for cancel handling).
    */
@@ -355,13 +372,22 @@ export class AgentActionImpl {
       execOperationId: string;
       streamOperationId: string;
     },
-  ): AgentGatewayClient => {
+  ): IAgentGatewayClient | undefined => {
     const { assistantId, execOperationId, streamOperationId } = params;
 
-    // TODO: read from server config when context store accessor is available
-    const gatewayUrl = 'https://agent-gateway.lobehub.com';
+    const gatewayUrl = getAgentGatewayUrl();
+    if (!gatewayUrl) {
+      log('Agent gateway URL not configured, skipping WebSocket connection');
+      this.#get().failOperation(streamOperationId, {
+        message: 'Agent gateway URL not configured',
+        type: 'AgentGatewayError',
+      });
+      return undefined;
+    }
 
-    // TODO: get JWT token from auth session
+    // Token is empty for now — the gateway authenticates via cookie/session
+    // forwarded through the WebSocket handshake. When a dedicated gateway JWT
+    // endpoint is added, replace this with the fetched token.
     const token = '';
 
     const client = new AgentGatewayClient({ gatewayUrl, token });
@@ -394,15 +420,11 @@ export class AgentActionImpl {
     client.on('tool_confirmation_request', (message: ToolConfirmationRequestMessage) => {
       log('Tool confirmation request: %s', message.toolCallId);
       this.#get().updateOperationMetadata(streamOperationId, {
+        gatewayClient: client,
         needsHumanInput: true,
-        pendingApproval: [{ toolCallId: message.toolCallId, tool: message.tool }],
+        pendingApproval: [{ tool: message.tool, toolCallId: message.toolCallId }],
       });
       this.#get().internal_toggleMessageLoading(false, assistantId);
-
-      // Store client ref so intervention handler can use it
-      this.#get().updateOperationMetadata(streamOperationId, {
-        gatewayClient: client,
-      });
     });
 
     client.on('input_request', (message: InputRequestMessage) => {
@@ -416,7 +438,7 @@ export class AgentActionImpl {
       this.#get().internal_toggleMessageLoading(false, assistantId);
     });
 
-    client.on('session_complete', (message: SessionCompleteMessage) => {
+    client.on('session_complete', (_message: SessionCompleteMessage) => {
       log('Session complete for %s', chatKey);
       this.#get().internal_toggleMessageLoading(false, assistantId);
       this.#get().completeOperation(streamOperationId);
@@ -544,12 +566,30 @@ export class AgentActionImpl {
     try {
       log(`Handling human intervention ${action} for operation ${messageOpId}:`, data);
 
-      // Send human intervention request
-      await agentRuntimeService.handleHumanIntervention({
-        action: action as any,
-        data,
-        operationId: messageOpId,
-      });
+      // Check if this operation has a gateway client (WebSocket path)
+      const gatewayClient = operation.metadata.gatewayClient as IAgentGatewayClient | undefined;
+      if (gatewayClient) {
+        // Send via WebSocket
+        if (action === 'approve' || action === 'reject') {
+          const toolCallId =
+            data?.toolCallId || operation.metadata.pendingApproval?.[0]?.toolCallId;
+          if (toolCallId) {
+            gatewayClient.sendToolConfirmation(toolCallId, action === 'approve');
+          }
+        } else if (action === 'user_input') {
+          const requestId = data?.requestId || operation.metadata.pendingRequestId;
+          if (requestId && data?.content) {
+            gatewayClient.sendUserInput(requestId, data.content);
+          }
+        }
+      } else {
+        // Fallback to HTTP for non-gateway operations
+        await agentRuntimeService.handleHumanIntervention({
+          action: action as any,
+          data,
+          operationId: messageOpId,
+        });
+      }
 
       // Resume loading state
       this.#get().internal_toggleMessageLoading(true, assistantId);

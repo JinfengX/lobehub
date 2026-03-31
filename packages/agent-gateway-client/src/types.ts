@@ -154,3 +154,23 @@ export interface AgentGatewayClientEvents {
   status_update: (message: StatusChangeMessage) => void;
   tool_confirmation_request: (message: ToolConfirmationRequestMessage) => void;
 }
+
+// ─── Client Interface ───
+
+export interface IAgentGatewayClient {
+  connect: (chatKey: string) => void;
+  readonly connectionStatus: ConnectionStatus;
+  disconnect: () => void;
+  off: <K extends keyof AgentGatewayClientEvents>(
+    event: K,
+    listener: AgentGatewayClientEvents[K],
+  ) => void;
+  on: <K extends keyof AgentGatewayClientEvents>(
+    event: K,
+    listener: AgentGatewayClientEvents[K],
+  ) => void;
+  sendInterrupt: () => void;
+  sendToolConfirmation: (toolCallId: string, approved: boolean) => void;
+  sendUserInput: (requestId: string, content: string) => void;
+  updateToken: (token: string) => void;
+}

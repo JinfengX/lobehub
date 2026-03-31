@@ -4,6 +4,7 @@ import type {
   ClientMessage,
   ConnectionStatus,
   ErrorMessage,
+  IAgentGatewayClient,
   InputRequestMessage,
   ServerMessage,
   SessionCompleteMessage,
@@ -14,8 +15,10 @@ import type {
 // ─── Constants ───
 
 const HEARTBEAT_INTERVAL = 30_000; // 30s
+const HEARTBEAT_TIMEOUT = 10_000; // 10s — if no ack within this window, consider dead
 const INITIAL_RECONNECT_DELAY = 1000; // 1s
 const MAX_RECONNECT_DELAY = 30_000; // 30s
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 
 // ─── Minimal EventEmitter for Browser ───
 
@@ -58,17 +61,21 @@ export interface AgentGatewayClientOptions {
   autoReconnect?: boolean;
   /** Gateway base URL (e.g. https://agent-gateway.lobehub.com) */
   gatewayUrl: string;
+  /** Max reconnect attempts before giving up (default: 10, 0 = unlimited) */
+  maxReconnectAttempts?: number;
   /** JWT token for authentication */
   token: string;
 }
 
 // ─── Agent Gateway Client ───
 
-export class AgentGatewayClient {
+export class AgentGatewayClient implements IAgentGatewayClient {
   private ws: WebSocket | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatAckTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = INITIAL_RECONNECT_DELAY;
+  private reconnectAttempts = 0;
   private status: ConnectionStatus = 'disconnected';
   private intentionalDisconnect = false;
 
@@ -78,6 +85,7 @@ export class AgentGatewayClient {
   private gatewayUrl: string;
   private token: string;
   private autoReconnect: boolean;
+  private maxReconnectAttempts: number;
 
   private emitter = new BrowserEventEmitter();
 
@@ -85,6 +93,7 @@ export class AgentGatewayClient {
     this.gatewayUrl = options.gatewayUrl;
     this.token = options.token;
     this.autoReconnect = options.autoReconnect ?? true;
+    this.maxReconnectAttempts = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
   }
 
   // ─── Public API ───
@@ -115,12 +124,13 @@ export class AgentGatewayClient {
 
     this.chatKey = chatKey;
     this.intentionalDisconnect = false;
+    this.reconnectAttempts = 0;
     this.doConnect();
   }
 
   disconnect(): void {
     this.intentionalDisconnect = true;
-    this.cleanup();
+    this.cleanupConnection();
     this.setStatus('disconnected');
   }
 
@@ -182,6 +192,7 @@ export class AgentGatewayClient {
 
   private handleOpen = (): void => {
     this.reconnectDelay = INITIAL_RECONNECT_DELAY;
+    this.reconnectAttempts = 0;
     this.setStatus('authenticating');
 
     // Authenticate
@@ -212,6 +223,7 @@ export class AgentGatewayClient {
         }
 
         case 'heartbeat_ack': {
+          this.clearHeartbeatAckTimer();
           break;
         }
 
@@ -251,8 +263,8 @@ export class AgentGatewayClient {
           break;
         }
       }
-    } catch {
-      // Ignore malformed messages
+    } catch (error) {
+      console.warn('[AgentGatewayClient] Failed to parse message:', error);
     }
   };
 
@@ -279,6 +291,7 @@ export class AgentGatewayClient {
     this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
       this.send({ type: 'heartbeat' });
+      this.startHeartbeatAckTimer();
     }, HEARTBEAT_INTERVAL);
   }
 
@@ -287,12 +300,41 @@ export class AgentGatewayClient {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+    this.clearHeartbeatAckTimer();
+  }
+
+  private startHeartbeatAckTimer(): void {
+    this.clearHeartbeatAckTimer();
+    this.heartbeatAckTimer = setTimeout(() => {
+      // No ack received — connection is likely dead
+      console.warn('[AgentGatewayClient] Heartbeat ack timeout, closing connection');
+      this.ws?.close(4000, 'Heartbeat timeout');
+    }, HEARTBEAT_TIMEOUT);
+  }
+
+  private clearHeartbeatAckTimer(): void {
+    if (this.heartbeatAckTimer) {
+      clearTimeout(this.heartbeatAckTimer);
+      this.heartbeatAckTimer = null;
+    }
   }
 
   // ─── Reconnection (exponential backoff) ───
 
   private scheduleReconnect(): void {
+    // Check max attempts (0 = unlimited)
+    if (this.maxReconnectAttempts > 0 && this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.warn(
+        `[AgentGatewayClient] Max reconnect attempts (${this.maxReconnectAttempts}) reached`,
+      );
+      this.setStatus('disconnected');
+      this.emitter.emit('disconnected');
+      this.emitter.emit('error', new Error('Max reconnect attempts reached'));
+      return;
+    }
+
     this.clearReconnectTimer();
+    this.reconnectAttempts++;
 
     const delay = this.reconnectDelay;
     this.emitter.emit('reconnecting', delay);
@@ -323,13 +365,22 @@ export class AgentGatewayClient {
 
   // ─── Helpers ───
 
-  private send(data: ClientMessage): void {
+  /**
+   * Send a message to the gateway. Returns false if the socket is not open.
+   */
+  private send(data: ClientMessage): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
+      return true;
     }
+    return false;
   }
 
-  private cleanup(): void {
+  /**
+   * Clean up WebSocket connection and timers, but preserve emitter listeners.
+   * Emitter listeners are registered by the consumer and should survive reconnects.
+   */
+  private cleanupConnection(): void {
     this.stopHeartbeat();
     this.clearReconnectTimer();
 
@@ -344,7 +395,13 @@ export class AgentGatewayClient {
       }
       this.ws = null;
     }
+  }
 
+  /**
+   * Full cleanup including emitter listeners. Call only when the client is being disposed.
+   */
+  dispose(): void {
+    this.disconnect();
     this.emitter.removeAllListeners();
   }
 }

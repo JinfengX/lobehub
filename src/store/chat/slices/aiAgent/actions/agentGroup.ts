@@ -170,13 +170,20 @@ export class ChatGroupChatActionImpl {
       this.#get().associateMessageWithOperation(result.assistantMessageId, execOperationId);
       this.#get().associateMessageWithOperation(result.assistantMessageId, result.operationId);
 
-      // 9. Connect to Agent Gateway via WebSocket
-      const chatKey = result.operationId; // Use operationId as chatKey for gateway routing
-      const gatewayClient = this.#get().internal_connectAgentGateway(chatKey, {
-        assistantId: result.assistantMessageId,
-        execOperationId,
-        streamOperationId: result.operationId,
-      });
+      // 9. Connect to Agent Gateway via WebSocket (if available)
+      if (this.#get().isAgentGatewayAvailable()) {
+        const chatKey = result.operationId; // Use operationId as chatKey for gateway routing
+        this.#get().internal_connectAgentGateway(chatKey, {
+          assistantId: result.assistantMessageId,
+          execOperationId,
+          streamOperationId: result.operationId,
+        });
+      } else {
+        log('Agent gateway not available, server-side execution will use fallback path');
+        // Complete operations — the backend handles execution independently
+        this.#get().completeOperation(result.operationId);
+        this.#get().completeOperation(execOperationId);
+      }
     } catch (error) {
       // Check if this is an abort error (user cancelled the operation)
       const isAbortError =
