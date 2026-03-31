@@ -61,30 +61,6 @@ export const LOBEHUB_SKILL_PROVIDERS: LobehubSkillProviderType[] = [
     authorUrl: 'https://lobehub.com',
     defaultVisible: true,
     description:
-      'Google Sheets is a web-based spreadsheet application that allows users to create, edit, and collaborate on spreadsheets online',
-    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googlesheets.svg',
-    id: 'google-sheets',
-    label: 'Google Sheets',
-    readme:
-      'Connect to Google Sheets to read, write, and analyze spreadsheet data. Perform calculations, generate reports, create charts, and manage tabular data collaboratively with AI assistance.',
-  },
-  {
-    author: 'LobeHub',
-    authorUrl: 'https://lobehub.com',
-    defaultVisible: true,
-    description:
-      'Google Docs is a word processor included as part of the free, web-based Google Docs Editors suite',
-    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googledocs.svg',
-    id: 'google-docs',
-    label: 'Google Docs',
-    readme:
-      'Integrate with Google Docs to create, edit, and manage documents. Write content, format text, collaborate in real-time, and access your documents through natural conversation.',
-  },
-  {
-    author: 'LobeHub',
-    authorUrl: 'https://lobehub.com',
-    defaultVisible: true,
-    description:
       'Linear is a modern issue tracking and project management tool designed for high-performance teams to build better software faster',
     icon: SiLinear,
     id: 'linear',

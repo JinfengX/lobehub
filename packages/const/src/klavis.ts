@@ -72,30 +72,30 @@ export const KLAVIS_SERVER_TYPES: KlavisServerType[] = [
     label: 'Airtable',
     serverName: Klavis.McpServerName.Airtable,
   },
-  // {
-  //   author: 'Klavis',
-  //   authorUrl: 'https://klavis.io',
-  //   description:
-  //     'Google Sheets is a web-based spreadsheet application that allows users to create, edit, and collaborate on spreadsheets online',
-  //   icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googlesheets.svg',
-  //   identifier: 'google-sheets',
-  //   readme:
-  //     'Connect to Google Sheets to read, write, and analyze spreadsheet data. Perform calculations, generate reports, create charts, and manage tabular data collaboratively with AI assistance.',
-  //   label: 'Google Sheets',
-  //   serverName: Klavis.McpServerName.GoogleSheets,
-  // },
-  // {
-  //   author: 'Klavis',
-  //   authorUrl: 'https://klavis.io',
-  //   description:
-  //     'Google Docs is a word processor included as part of the free, web-based Google Docs Editors suite',
-  //   icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googledocs.svg',
-  //   identifier: 'google-docs',
-  //   readme:
-  //     'Integrate with Google Docs to create, edit, and manage documents. Write content, format text, collaborate in real-time, and access your documents through natural conversation.',
-  //   label: 'Google Docs',
-  //   serverName: Klavis.McpServerName.GoogleDocs,
-  // },
+  {
+    author: 'Klavis',
+    authorUrl: 'https://klavis.io',
+    description:
+      'Google Sheets is a web-based spreadsheet application that allows users to create, edit, and collaborate on spreadsheets online',
+    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googlesheets.svg',
+    identifier: 'google-sheets',
+    readme:
+      'Connect to Google Sheets to read, write, and analyze spreadsheet data. Perform calculations, generate reports, create charts, and manage tabular data collaboratively with AI assistance.',
+    label: 'Google Sheets',
+    serverName: Klavis.McpServerName.GoogleSheets,
+  },
+  {
+    author: 'Klavis',
+    authorUrl: 'https://klavis.io',
+    description:
+      'Google Docs is a word processor included as part of the free, web-based Google Docs Editors suite',
+    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googledocs.svg',
+    identifier: 'google-docs',
+    readme:
+      'Integrate with Google Docs to create, edit, and manage documents. Write content, format text, collaborate in real-time, and access your documents through natural conversation.',
+    label: 'Google Docs',
+    serverName: Klavis.McpServerName.GoogleDocs,
+  },
   {
     author: 'Klavis',
     authorUrl: 'https://klavis.io',
