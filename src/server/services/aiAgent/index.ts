@@ -10,6 +10,7 @@ import {
 import { builtinTools, manualModeExcludeToolIds } from '@lobechat/builtin-tools';
 import { LOADING_FLAT } from '@lobechat/const';
 import type { LobeToolManifest } from '@lobechat/context-engine';
+import { SkillEngine } from '@lobechat/context-engine';
 import type { LobeChatDatabase } from '@lobechat/database';
 import type {
   ChatTopicBotContext,
@@ -34,6 +35,7 @@ import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
 import { UserModel } from '@/database/models/user';
 import { UserPersonaModel } from '@/database/models/userMemory/persona';
+import { shouldEnableBuiltinSkill } from '@/helpers/skillFilters';
 import {
   createServerAgentToolsEngine,
   type EvalContext,
@@ -41,6 +43,7 @@ import {
 } from '@/server/modules/Mecha';
 import { type ServerUserMemoryConfig } from '@/server/modules/Mecha/ContextEngineering/types';
 import { AgentService } from '@/server/services/agent';
+import { AgentDocumentsService } from '@/server/services/agentDocuments';
 import type { AgentRuntimeServiceOptions } from '@/server/services/agentRuntime';
 import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { getAbortError, isAbortError, throwIfAborted } from '@/server/services/agentRuntime/abort';
@@ -50,6 +53,8 @@ import { FileService } from '@/server/services/file';
 import { KlavisService } from '@/server/services/klavis';
 import { MarketService } from '@/server/services/market';
 import { deviceProxy } from '@/server/services/toolExecution/deviceProxy';
+
+import { ingestAttachment } from './ingestAttachment';
 
 const log = debug('lobe-server:ai-agent-service');
 
@@ -82,8 +87,12 @@ function formatErrorForMetadata(error: unknown): Record<string, any> | undefined
  * This extends the public ExecAgentParams with server-side only options
  */
 interface InternalExecAgentParams extends ExecAgentParams {
+  /** Additional plugin IDs to inject (e.g., task tool during task execution) */
+  additionalPluginIds?: string[];
   /** Bot context for topic metadata (platform, applicationId, platformThreadId) */
   botContext?: ChatTopicBotContext;
+  /** Bot platform context for injecting platform capabilities (e.g. markdown support) */
+  botPlatformContext?: any;
   /**
    * Completion webhook configuration
    * Persisted in Redis state, triggered via HTTP POST when the operation completes.
@@ -98,17 +107,22 @@ interface InternalExecAgentParams extends ExecAgentParams {
   discordContext?: any;
   /** Eval context for injecting environment prompts into system message */
   evalContext?: EvalContext;
-  /** External file URLs to download, upload to S3, and attach to the user message */
+  /** External files to upload to S3 and attach to the user message */
   files?: Array<{
+    /** Pre-downloaded buffer (from adapter/platform layer) */
+    buffer?: Buffer;
     mimeType?: string;
     name?: string;
     size?: number;
-    url: string;
+    /** External URL — fetched if no buffer provided */
+    url?: string;
   }>;
   /** External lifecycle hooks (auto-adapt to local/production mode) */
   hooks?: AgentHook[];
   /** Maximum steps for the agent operation */
   maxSteps?: number;
+  queueRetries?: number;
+  queueRetryDelay?: string;
   /** Abort startup before the agent runtime operation is created */
   signal?: AbortSignal;
   /** Step lifecycle callbacks for operation tracking (server-side only) */
@@ -126,13 +140,15 @@ interface InternalExecAgentParams extends ExecAgentParams {
    * Defaults to true. Set to false for non-streaming scenarios (e.g., bot integrations).
    */
   stream?: boolean;
+  /** Task ID that triggered this execution (if trigger is 'task') */
+  taskId?: string;
   /**
    * Custom title for the topic.
    * When provided (including empty string), overrides the default prompt-based title.
    * When undefined, falls back to prompt.slice(0, 50).
    */
   title?: string;
-  /** Topic creation trigger source ('cron' | 'chat' | 'api') */
+  /** Topic creation trigger source ('cron' | 'chat' | 'api' | 'task') */
   trigger?: string;
   /**
    * User intervention configuration
@@ -158,6 +174,7 @@ interface InternalExecAgentParams extends ExecAgentParams {
 export class AiAgentService {
   private readonly userId: string;
   private readonly db: LobeChatDatabase;
+  private readonly agentDocumentsService: AgentDocumentsService;
   private readonly agentModel: AgentModel;
   private readonly agentService: AgentService;
   private readonly messageModel: MessageModel;
@@ -175,6 +192,7 @@ export class AiAgentService {
   ) {
     this.userId = userId;
     this.db = db;
+    this.agentDocumentsService = new AgentDocumentsService(db, userId);
     this.agentModel = new AgentModel(db, userId);
     this.agentService = new AgentService(db, userId);
     this.messageModel = new MessageModel(db, userId);
@@ -201,12 +219,14 @@ export class AiAgentService {
    */
   async execAgent(params: InternalExecAgentParams): Promise<ExecAgentResult> {
     const {
+      additionalPluginIds,
       agentId,
       slug,
       prompt,
       appContext,
       autoStart = true,
       botContext,
+      botPlatformContext,
       discordContext,
       existingMessageIds = [],
       files,
@@ -217,11 +237,14 @@ export class AiAgentService {
       title,
       trigger,
       cronJobId,
+      taskId,
       evalContext,
       maxSteps,
       signal,
       userInterventionConfig,
       completionWebhook,
+      queueRetries,
+      queueRetryDelay,
       stepWebhook,
       webhookDelivery,
     } = params;
@@ -322,10 +345,10 @@ export class AiAgentService {
     // 3. Handle topic creation: if no topicId provided, create a new topic; otherwise reuse existing
     let topicId = appContext?.topicId;
     if (!topicId) {
-      // Prepare metadata with cronJobId and botContext if provided
+      // Prepare metadata with cronJobId, taskId, and botContext if provided
       const metadata =
-        cronJobId || botContext
-          ? { bot: botContext, cronJobId: cronJobId || undefined }
+        cronJobId || taskId || botContext
+          ? { bot: botContext, cronJobId: cronJobId || undefined, taskId: taskId || undefined }
           : undefined;
 
       const newTopic = await this.topicModel.create({
@@ -411,6 +434,15 @@ export class AiAgentService {
       agentConfig.knowledgeBases?.some((kb: { enabled?: boolean | null }) => kb.enabled === true) ??
       false;
 
+    // Check if agent has documents (for auto-enabling agent-documents tool)
+    let hasAgentDocuments = false;
+    try {
+      const docs = await this.agentDocumentsService.getAgentDocuments(resolvedAgentId);
+      hasAgentDocuments = docs.length > 0;
+    } catch {
+      // Agent documents check is non-critical
+    }
+
     // Build device context for ToolsEngine enableChecker
     const gatewayConfigured = deviceProxy.isConfigured;
     const boundDeviceId = agentConfig.agencyConfig?.boundDeviceId;
@@ -434,6 +466,7 @@ export class AiAgentService {
     const hasTopicReference = /refer_topic/.test(prompt ?? '');
     const agentPlugins = [
       ...(agentConfig?.plugins ?? []),
+      ...(additionalPluginIds || []),
       ...(hasTopicReference ? ['lobe-topic-reference'] : []),
     ];
 
@@ -463,6 +496,7 @@ export class AiAgentService {
           }
         : undefined,
       globalMemoryEnabled,
+      hasAgentDocuments,
       hasEnabledKnowledgeBases,
       model,
       provider,
@@ -472,6 +506,7 @@ export class AiAgentService {
     // Include device tool IDs so ToolsEngine can process them via enableChecker
     const pluginIds = [
       ...(agentConfig.plugins || []),
+      ...(additionalPluginIds || []),
       LocalSystemManifest.identifier,
       RemoteDeviceManifest.identifier,
     ];
@@ -719,31 +754,19 @@ export class AiAgentService {
       for (const file of files) {
         await throwIfExecutionAborted('file upload');
 
-        const ext = file.name?.split('.').pop() || 'bin';
-        const pathname = `files/${this.userId}/${nanoid()}/${file.name || `file.${ext}`}`;
-
         try {
-          const result = await fileService.uploadFromUrl(file.url, pathname);
+          const result = await ingestAttachment(file, fileService, this.userId);
           fileIds.push(result.fileId);
 
-          // Build imageList for vision-capable models.
-          // Use getFullFileUrl to resolve S3 key to a publicly accessible URL
-          // (presigned or public domain), matching the frontend postProcessUrl pattern.
-          const mimeType = file.mimeType || '';
-          if (mimeType.startsWith('image/')) {
-            const resolvedUrl = await fileService.getFullFileUrl(result.key);
-            imageList.push({ alt: file.name || 'image', id: result.fileId, url: resolvedUrl });
+          if (result.isImage) {
+            imageList.push({
+              alt: file.name || 'image',
+              id: result.fileId,
+              url: result.resolvedUrl,
+            });
           }
         } catch (error) {
-          log('execAgent: failed to upload file %s: %O', file.url, error);
-
-          // Fallback: if S3 upload failed but the file is an inline data URL image,
-          // pass it directly to the LLM (vision models support data: URLs).
-          const mimeType = file.mimeType || '';
-          if (mimeType.startsWith('image/') && file.url.startsWith('data:')) {
-            imageList.push({ alt: file.name || 'image', id: `inline_${nanoid()}`, url: file.url });
-            log('execAgent: using inline data URL fallback for image');
-          }
+          log('execAgent: failed to ingest file %s: %O', file.name || file.url, error);
         }
       }
 
@@ -828,11 +851,13 @@ export class AiAgentService {
       Object.keys(toolManifestMap).length,
     );
 
-    // 18. Build skill metas for <available_skills> prompt injection
-    // Combine builtin skills + user DB skills so AI can discover all installed skills
-    let skillMetas: Array<{ description: string; identifier: string; name: string }> = [];
+    // 18. Build OperationSkillSet via SkillEngine
+    // Combines builtin skills + user DB skills, filters by platform via enableChecker,
+    // and pairs with agent's enabled plugin IDs for downstream SkillResolver consumption.
+    let operationSkillSet;
     try {
       const builtinMetas = builtinSkills.map((s) => ({
+        content: s.content,
         description: s.description,
         identifier: s.identifier,
         name: s.name,
@@ -844,12 +869,26 @@ export class AiAgentService {
         identifier: s.identifier,
         name: s.name,
       }));
-      skillMetas = [...builtinMetas, ...dbMetas];
+
+      const skillEngine = new SkillEngine({
+        enableChecker: (skill) => shouldEnableBuiltinSkill(skill.identifier),
+        skills: [...builtinMetas, ...dbMetas],
+      });
+      operationSkillSet = skillEngine.generate(agentPlugins ?? []);
     } catch (error) {
-      log('execAgent: failed to fetch skill metas: %O', error);
+      log('execAgent: failed to build operationSkillSet: %O', error);
     }
 
     // 19. Create operation using AgentRuntimeService
+    log(
+      'execAgent: creating operation %s — agentDocuments=%d, knowledgeBases=%s, tools=%d, skills=%d',
+      operationId,
+      hasAgentDocuments ? 'yes' : 0,
+      hasEnabledKnowledgeBases,
+      tools?.length ?? 0,
+      operationSkillSet?.skills?.length ?? 0,
+    );
+
     // Wrap in try-catch to handle operation startup failures (e.g., QStash unavailable)
     // If createOperation fails, we still have valid messages that need error info
     try {
@@ -861,11 +900,13 @@ export class AiAgentService {
         appContext: {
           agentId: resolvedAgentId,
           groupId: appContext?.groupId,
+          taskId,
           threadId: appContext?.threadId,
           topicId,
           trigger,
         },
         autoStart,
+        botPlatformContext,
         completionWebhook,
         discordContext,
         evalContext,
@@ -878,6 +919,8 @@ export class AiAgentService {
         signal,
         stepCallbacks,
         stepWebhook,
+        queueRetries,
+        queueRetryDelay,
         stream,
         toolSet: {
           enabledToolIds: toolsResult.enabledToolIds,
@@ -885,7 +928,7 @@ export class AiAgentService {
           sourceMap: toolSourceMap,
           tools,
         },
-        skillMetas,
+        operationSkillSet,
         userId: this.userId,
         userInterventionConfig,
         userMemory,

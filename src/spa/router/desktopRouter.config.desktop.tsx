@@ -474,3 +474,15 @@ desktopRoutes.push({
   errorElement: <ErrorBoundary resetPath="/" />,
   path: '/onboarding',
 });
+
+desktopRoutes.push({
+  element: redirectElement('/desktop-onboarding'),
+  errorElement: <ErrorBoundary resetPath="/" />,
+  path: '/onboarding/agent',
+});
+
+desktopRoutes.push({
+  element: redirectElement('/desktop-onboarding'),
+  errorElement: <ErrorBoundary resetPath="/" />,
+  path: '/onboarding/classic',
+});
