@@ -18,9 +18,10 @@ declare module 'styled-components' {
 
 declare global {
   interface Window {
-    __CHAT_STORE__?: any;
     __DEBUG_PROXY__: boolean | undefined;
     __editor?: IEditor;
+    /** Dev-only: Zustand store snapshots via `getState()` keyed by store name */
+    __LOBE_STORES?: Record<string, () => unknown>;
     __SERVER_CONFIG__: SPAServerConfig | undefined;
     lobeEnv?: {
       darwinMajorVersion?: number;
@@ -40,4 +41,7 @@ declare global {
 
   /** Vite define: current bundle is Electron desktop variant */
   const __ELECTRON__: boolean | undefined;
+
+  /** Vite define: desktop app version injected by electron-vite renderer build */
+  const __MAIN_VERSION__: string;
 }

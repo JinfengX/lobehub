@@ -141,7 +141,10 @@ class ChatService {
 
     // =================== 1.1 process user memories =================== //
 
-    const enableUserMemories = settingsSelectors.memoryEnabled(getUserStoreState());
+    const userLevelMemoryEnabled = settingsSelectors.memoryEnabled(getUserStoreState());
+    // Agent-level memory toggle takes priority over user-level setting,
+    // matching the logic in useMemoryEnabled hook
+    const enableUserMemories = chatConfig.memory?.enabled ?? userLevelMemoryEnabled;
     const userMemorySettings = settingsSelectors.currentMemorySettings(getUserStoreState());
     const effectiveMemoryEffort =
       chatConfig.memory?.effort ?? userMemorySettings.effort ?? 'medium';
@@ -244,8 +247,8 @@ class ChatService {
       enableHistoryCount: chatConfig.enableHistoryCount,
       enableUserMemories,
       groupId,
-      // historyCount + 2 accounts for: 1 user message + 1 assistant response being added
-      historyCount: (chatConfig.historyCount ?? 20) + 2,
+      // historyCount is number of history messages; add 1 for current user message
+      historyCount: (chatConfig.historyCount ?? 20) + 1,
       // Page editor context from agent runtime
       initialContext: options?.initialContext,
       inputTemplate: chatConfig.inputTemplate,
@@ -345,6 +348,8 @@ class ChatService {
     const chatConfig = agentChatConfigSelectors.currentChatConfig(getAgentStoreState());
 
     delete (res as any).scope;
+    // Fork flow stores market metadata in agent.params; must not reach OpenAI-compatible / Responses API
+    delete (res as any).forkedFromIdentifier;
 
     const payload = merge(
       {

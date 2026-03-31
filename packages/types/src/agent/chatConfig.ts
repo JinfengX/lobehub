@@ -96,6 +96,14 @@ export interface LobeAgentChatConfig extends AgentMemoryChatConfig {
   imageResolution2?: '512px' | '1K' | '2K' | '4K';
   inputTemplate?: string;
   reasoningBudgetToken?: number;
+  /**
+   * Reasoning budget token for models with 32k max (GLM-5/GLM-4.7)
+   */
+  reasoningBudgetToken32k?: number;
+  /**
+   * Reasoning budget token for models with 80k max (Qwen3 series)
+   */
+  reasoningBudgetToken80k?: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
   /**
    * Runtime environment configuration (desktop only)
@@ -104,6 +112,14 @@ export interface LobeAgentChatConfig extends AgentMemoryChatConfig {
 
   searchFCModel?: WorkingModel;
   searchMode?: SearchMode;
+
+  /**
+   * Skill activate mode:
+   * - 'auto': Default tools (LobeTools, Skills, SkillStore, etc.) are always active,
+   *   allowing AI to autonomously activate tools, run skills, and install new skills.
+   * - 'manual': Only user-selected tools/skills are active, giving precise control.
+   */
+  skillActivateMode?: 'auto' | 'manual';
 
   /**
    * Output text verbosity control
@@ -178,6 +194,8 @@ export const AgentChatConfigSchema = z
     imageResolution2: z.enum(['512px', '1K', '2K', '4K']).optional(),
     runtimeEnv: RuntimeEnvConfigSchema.optional(),
     reasoningBudgetToken: z.number().optional(),
+    reasoningBudgetToken32k: z.number().optional(),
+    reasoningBudgetToken80k: z.number().optional(),
     reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
     searchFCModel: z
       .object({
@@ -186,6 +204,7 @@ export const AgentChatConfigSchema = z
       })
       .optional(),
     searchMode: z.enum(['off', 'on', 'auto']).optional(),
+    skillActivateMode: z.enum(['auto', 'manual']).optional(),
     textVerbosity: z.enum(['low', 'medium', 'high']).optional(),
     thinking: z.enum(['disabled', 'auto', 'enabled']).optional(),
     thinkingBudget: z.number().optional(),
@@ -194,7 +213,7 @@ export const AgentChatConfigSchema = z
     thinkingLevel3: z.enum(['low', 'medium', 'high']).optional(),
     thinkingLevel4: z.enum(['minimal', 'high']).optional(),
     thinkingLevel5: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
-    toolResultMaxLength: z.number().default(6000),
+    toolResultMaxLength: z.number().default(25000),
     urlContext: z.boolean().optional(),
     useModelBuiltinSearch: z.boolean().optional(),
   })

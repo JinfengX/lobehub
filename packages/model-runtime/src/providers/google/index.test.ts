@@ -440,10 +440,8 @@ describe('LobeGoogleAI', () => {
         const enhancedStream = instance['createEnhancedStream'](mockStream, abortController.signal);
 
         const reader = enhancedStream.getReader();
-        const chunks: any[] = [];
-
         // Read first value then cancel to trigger error chunk
-        chunks.push((await reader.read()).value);
+        const chunks: any[] = [(await reader.read()).value];
         abortController.abort();
 
         // Read all remaining chunks
@@ -494,10 +492,8 @@ describe('LobeGoogleAI', () => {
         const enhancedStream = instance['createEnhancedStream'](mockStream, abortController.signal);
 
         const reader = enhancedStream.getReader();
-        const chunks: any[] = [];
-
         // Read first value then collect remaining chunks (error included)
-        chunks.push((await reader.read()).value);
+        const chunks: any[] = [(await reader.read()).value];
         let result;
         while (!(result = await reader.read()).done) {
           chunks.push(result.value);
@@ -518,9 +514,15 @@ describe('LobeGoogleAI', () => {
       });
 
       it('should handle AbortError without data', async () => {
-        const mockStream = (async function* () {
-          throw new Error('aborted');
-        })();
+        const mockStream: AsyncIterable<GenerateContentResponse> = {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => {
+                throw new Error('aborted');
+              },
+            } as AsyncIterator<GenerateContentResponse>;
+          },
+        };
 
         const abortController = new AbortController();
         const enhancedStream = instance['createEnhancedStream'](mockStream, abortController.signal);
@@ -559,10 +561,8 @@ describe('LobeGoogleAI', () => {
         const enhancedStream = instance['createEnhancedStream'](mockStream, abortController.signal);
 
         const reader = enhancedStream.getReader();
-        const chunks: any[] = [];
-
         // Read first value then collect remaining chunks (parsing error)
-        chunks.push((await reader.read()).value);
+        const chunks: any[] = [(await reader.read()).value];
         let result;
         while (!(result = await reader.read()).done) {
           chunks.push(result.value);

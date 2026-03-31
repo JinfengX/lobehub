@@ -46,14 +46,20 @@ export interface ServerCreateAgentToolsEngineParams {
   };
   /** Device gateway context for remote tool calling */
   deviceContext?: {
+    /** When true, a device has been auto-activated — Remote Device tool is unnecessary */
+    autoActivated?: boolean;
     boundDeviceId?: string;
     deviceOnline?: boolean;
     gatewayConfigured: boolean;
   };
   /** Whether the user's global memory setting is enabled */
   globalMemoryEnabled?: boolean;
+  /** Whether agent has agent documents */
+  hasAgentDocuments?: boolean;
   /** Whether agent has enabled knowledge bases */
   hasEnabledKnowledgeBases?: boolean;
+  /** Whether the request originates from a bot conversation (auto-enables message tool) */
+  isBotConversation?: boolean;
   /** Model name for function calling compatibility check */
   model: string;
   /** Provider name for function calling compatibility check */

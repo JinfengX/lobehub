@@ -241,6 +241,8 @@ export type ModelSearchImplementType = 'tool' | 'params' | 'internal';
 
 export type ExtendParamsType =
   | 'reasoningBudgetToken'
+  | 'reasoningBudgetToken32k'
+  | 'reasoningBudgetToken80k'
   | 'enableReasoning'
   | 'enableAdaptiveThinking'
   | 'disableContextCaching'
@@ -277,6 +279,8 @@ export interface AiModelSettings {
 
 export const ExtendParamsTypeSchema = z.enum([
   'reasoningBudgetToken',
+  'reasoningBudgetToken32k',
+  'reasoningBudgetToken80k',
   'enableReasoning',
   'enableAdaptiveThinking',
   'disableContextCaching',
@@ -467,6 +471,10 @@ export interface AiModelForSelect {
    * Approximate per-image price (USD), used when exact calculation is not possible
    */
   approximatePricePerImage?: number;
+  /**
+   * Approximate per-video price (USD), used when exact calculation is not possible
+   */
+  approximatePricePerVideo?: number;
   contextWindowTokens?: number;
   description?: string;
   displayName?: string;
@@ -476,6 +484,10 @@ export interface AiModelForSelect {
    * Exact per-image price (USD) calculated from pricing units
    */
   pricePerImage?: number;
+  /**
+   * Exact per-video price (USD) when resolved from pricing units
+   */
+  pricePerVideo?: number;
   pricing?: Pricing;
   releasedAt?: string;
 }

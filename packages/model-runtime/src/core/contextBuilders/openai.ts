@@ -5,7 +5,7 @@ import { toFile } from 'openai';
 import type { options } from 'pdfkit';
 
 import { disableStreamModels, systemToUserModels } from '../../const/models';
-import type { ChatStreamPayload, OpenAIChatMessage } from '../../types';
+import type { ChatStreamPayload, OpenAIChatMessage, UserMessageContentPart } from '../../types';
 import { parseDataUri } from '../../utils/uriParser';
 
 export type ExtendedChatCompletionContentPart = {
@@ -18,7 +18,17 @@ export type ExtendedChatCompletionContentPart = {
 type ConvertMessageContentOptions = {
   forceImageBase64?: boolean;
   forceVideoBase64?: boolean;
+  strictToolPairing?: boolean;
 };
+
+type OpenAICompatibleContentPart =
+  | ExtendedChatCompletionContentPart
+  | OpenAI.ChatCompletionContentPart
+  | UserMessageContentPart;
+
+const isInternalThinkingContentPart = (
+  content: OpenAICompatibleContentPart,
+): content is Extract<UserMessageContentPart, { type: 'thinking' }> => content.type === 'thinking';
 
 export const convertMessageContent = async (
   content: OpenAI.ChatCompletionContentPart | ExtendedChatCompletionContentPart,
@@ -79,9 +89,11 @@ export const convertOpenAIMessages = async (
           typeof message.content === 'string'
             ? message.content
             : await Promise.all(
-                (message.content || []).map((c) =>
-                  convertMessageContent(c as OpenAI.ChatCompletionContentPart, options),
-                ),
+                (message.content || [])
+                  .filter((c) => !isInternalThinkingContentPart(c as OpenAICompatibleContentPart))
+                  .map((c) =>
+                    convertMessageContent(c as OpenAI.ChatCompletionContentPart, options),
+                  ),
               ),
         role: msg.role,
       };
@@ -106,6 +118,31 @@ export const convertOpenAIResponseInputs = async (
   messages: OpenAIChatMessage[],
   _options?: ConvertMessageContentOptions,
 ) => {
+  const strictToolPairing = options?.strictToolPairing === true;
+  // OpenAI Responses API rejects inputs that keep a function_call without its matching
+  // function_call_output. Example from production:
+  // "No tool output found for function call call_w5odMFjtXEYBBVyBUAQNMOh5."
+  const validToolCallIds = new Set<string>();
+  const pairedToolOutputIds = new Set<string>();
+
+  for (const message of messages) {
+    if (message.role === 'assistant' && message.tool_calls?.length) {
+      message.tool_calls.forEach((tool) => {
+        if (tool.id) validToolCallIds.add(tool.id);
+      });
+    }
+  }
+
+  for (const message of messages) {
+    if (
+      message.role === 'tool' &&
+      message.tool_call_id &&
+      validToolCallIds.has(message.tool_call_id)
+    ) {
+      pairedToolOutputIds.add(message.tool_call_id);
+    }
+  }
+
   const inputGroups = await Promise.all(
     messages.map(async (message) => {
       const items: OpenAI.Responses.ResponseInputItem[] = [];
@@ -120,9 +157,13 @@ export const convertOpenAIResponseInputs = async (
 
       // if message is assistant messages with tool calls , transform it to function type item
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls?.length > 0) {
-        message.tool_calls?.forEach((tool) => {
+        const toolCalls = strictToolPairing
+          ? message.tool_calls.filter((tool) => !!tool.id && pairedToolOutputIds.has(tool.id))
+          : message.tool_calls;
+
+        toolCalls.forEach((tool) => {
           items.push({
-            arguments: tool.function.name,
+            arguments: strictToolPairing ? tool.function.arguments : tool.function.name,
             call_id: tool.id,
             name: tool.function.name,
             type: 'function_call',
@@ -133,6 +174,12 @@ export const convertOpenAIResponseInputs = async (
       }
 
       if (message.role === 'tool') {
+        if (
+          strictToolPairing &&
+          (!message.tool_call_id || !pairedToolOutputIds.has(message.tool_call_id))
+        )
+          return items;
+
         items.push({
           call_id: message.tool_call_id,
           output: message.content,
@@ -155,6 +202,10 @@ export const convertOpenAIResponseInputs = async (
           ? message.content
           : await Promise.all(
               (message.content || []).map(async (c) => {
+                if (isInternalThinkingContentPart(c as OpenAICompatibleContentPart)) {
+                  return undefined;
+                }
+
                 if (c.type === 'text') {
                   // if assistant message, set type to output_text
                   // https://platform.openai.com/docs/guides/text

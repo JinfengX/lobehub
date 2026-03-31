@@ -1,21 +1,29 @@
+import { LobeActivatorManifest } from '@lobechat/builtin-tool-activator';
 import { AgentBuilderManifest } from '@lobechat/builtin-tool-agent-builder';
+import { AgentDocumentsManifest } from '@lobechat/builtin-tool-agent-documents';
 import { AgentManagementManifest } from '@lobechat/builtin-tool-agent-management';
+import { BriefManifest } from '@lobechat/builtin-tool-brief';
 import { CalculatorManifest } from '@lobechat/builtin-tool-calculator';
 import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
+import { CredsManifest } from '@lobechat/builtin-tool-creds';
 import { GroupAgentBuilderManifest } from '@lobechat/builtin-tool-group-agent-builder';
 import { GroupManagementManifest } from '@lobechat/builtin-tool-group-management';
 import { GTDManifest } from '@lobechat/builtin-tool-gtd';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
+import { MessageManifest } from '@lobechat/builtin-tool-message';
 import { NotebookManifest } from '@lobechat/builtin-tool-notebook';
 import { PageAgentManifest } from '@lobechat/builtin-tool-page-agent';
 import { RemoteDeviceManifest } from '@lobechat/builtin-tool-remote-device';
 import { SkillStoreManifest } from '@lobechat/builtin-tool-skill-store';
 import { SkillsManifest } from '@lobechat/builtin-tool-skills';
-import { LobeToolsManifest } from '@lobechat/builtin-tool-tools';
+import { TaskManifest } from '@lobechat/builtin-tool-task';
+import { TopicReferenceManifest } from '@lobechat/builtin-tool-topic-reference';
+import { UserInteractionManifest } from '@lobechat/builtin-tool-user-interaction';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
-import { isDesktop } from '@lobechat/const';
+import { WebOnboardingManifest } from '@lobechat/builtin-tool-web-onboarding';
+import { isDesktop, RECOMMENDED_SKILLS, RecommendedSkillType } from '@lobechat/const';
 import { type LobeBuiltinTool } from '@lobechat/types';
 
 /**
@@ -23,7 +31,7 @@ import { type LobeBuiltinTool } from '@lobechat/types';
  * Shared between frontend (createAgentToolsEngine) and server (createServerAgentToolsEngine).
  */
 export const defaultToolIds = [
-  LobeToolsManifest.identifier,
+  LobeActivatorManifest.identifier,
   SkillsManifest.identifier,
   SkillStoreManifest.identifier,
   WebBrowsingManifest.identifier,
@@ -31,20 +39,37 @@ export const defaultToolIds = [
   MemoryManifest.identifier,
   LocalSystemManifest.identifier,
   CloudSandboxManifest.identifier,
+  TopicReferenceManifest.identifier,
+  AgentDocumentsManifest.identifier,
+  GTDManifest.identifier,
 ];
 
 /**
  * Tool IDs that are always enabled regardless of user selection.
  * These are core system tools that the agent needs to function properly.
  */
-export const alwaysOnToolIds = [LobeToolsManifest.identifier, SkillsManifest.identifier];
+export const alwaysOnToolIds = [
+  LobeActivatorManifest.identifier,
+  SkillsManifest.identifier,
+  SkillStoreManifest.identifier,
+];
+
+/**
+ * Tool IDs to exclude from defaults when in manual skill-activate mode.
+ * These are the tool/skill discovery tools that should be disabled when user wants precise control.
+ * Other default tools (sandbox, web browsing, etc.) remain available if enabled externally.
+ */
+export const manualModeExcludeToolIds = [
+  LobeActivatorManifest.identifier,
+  SkillStoreManifest.identifier,
+];
 
 export const builtinTools: LobeBuiltinTool[] = [
   {
     discoverable: false,
     hidden: true,
-    identifier: LobeToolsManifest.identifier,
-    manifest: LobeToolsManifest,
+    identifier: LobeActivatorManifest.identifier,
+    manifest: LobeActivatorManifest,
     type: 'builtin',
   },
   {
@@ -55,7 +80,6 @@ export const builtinTools: LobeBuiltinTool[] = [
     type: 'builtin',
   },
   {
-    discoverable: false,
     hidden: true,
     identifier: SkillStoreManifest.identifier,
     manifest: SkillStoreManifest,
@@ -87,6 +111,11 @@ export const builtinTools: LobeBuiltinTool[] = [
     type: 'builtin',
   },
   {
+    identifier: CredsManifest.identifier,
+    manifest: CredsManifest,
+    type: 'builtin',
+  },
+  {
     hidden: true,
     identifier: KnowledgeBaseManifest.identifier,
     manifest: KnowledgeBaseManifest,
@@ -104,6 +133,12 @@ export const builtinTools: LobeBuiltinTool[] = [
     hidden: true,
     identifier: AgentBuilderManifest.identifier,
     manifest: AgentBuilderManifest,
+    type: 'builtin',
+  },
+  {
+    hidden: true,
+    identifier: AgentDocumentsManifest.identifier,
+    manifest: AgentDocumentsManifest,
     type: 'builtin',
   },
   {
@@ -142,9 +177,61 @@ export const builtinTools: LobeBuiltinTool[] = [
     type: 'builtin',
   },
   {
+    identifier: MessageManifest.identifier,
+    manifest: MessageManifest,
+    type: 'builtin',
+  },
+  {
     hidden: true,
     identifier: RemoteDeviceManifest.identifier,
     manifest: RemoteDeviceManifest,
     type: 'builtin',
   },
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: TopicReferenceManifest.identifier,
+    manifest: TopicReferenceManifest,
+    type: 'builtin',
+  },
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: WebOnboardingManifest.identifier,
+    manifest: WebOnboardingManifest,
+    type: 'builtin',
+  },
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: UserInteractionManifest.identifier,
+    manifest: UserInteractionManifest,
+    type: 'builtin',
+  },
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: TaskManifest.identifier,
+    manifest: TaskManifest,
+    type: 'builtin',
+  },
+  {
+    discoverable: false,
+    hidden: true,
+    identifier: BriefManifest.identifier,
+    manifest: BriefManifest,
+    type: 'builtin',
+  },
 ];
+
+/**
+ * Non-hidden builtin tools that are NOT in RECOMMENDED_SKILLS.
+ * These tools default to uninstalled and must be explicitly installed by the user from the Skill Store.
+ */
+const recommendedBuiltinIds = new Set(
+  RECOMMENDED_SKILLS.filter((s) => s.type === RecommendedSkillType.Builtin).map((s) => s.id),
+);
+
+export const defaultUninstalledBuiltinTools = builtinTools
+  .filter((t) => !t.hidden && !recommendedBuiltinIds.has(t.identifier))
+  .map((t) => t.identifier);
