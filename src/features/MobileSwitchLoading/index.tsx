@@ -4,7 +4,7 @@ import { type DynamicOptions } from 'next/dist/shared/lib/dynamic';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 
 const MobileSwitchLoading: DynamicOptions['loading'] = memo(() => {
   const { t } = useTranslation('common');

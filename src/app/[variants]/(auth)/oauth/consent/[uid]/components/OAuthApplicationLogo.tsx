@@ -3,7 +3,7 @@ import { createStaticStyles, cssVar } from 'antd-style';
 import { Link2Icon } from 'lucide-react';
 import React, { memo } from 'react';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   connector: css`

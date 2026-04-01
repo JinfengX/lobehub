@@ -11,7 +11,7 @@ import { BrainIcon, HeartHandshakeIcon, PencilRulerIcon, ShieldCheck } from 'luc
 import { memo, useCallback, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import { PRIVACY_URL, TERMS_URL } from '@/const/url';
 import { useUserStore } from '@/store/user';
 

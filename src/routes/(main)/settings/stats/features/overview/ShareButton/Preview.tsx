@@ -1,10 +1,10 @@
-import { imageUrl,OFFICIAL_URL } from '@lobechat/const';
+import { imageUrl, OFFICIAL_URL } from '@lobechat/const';
 import { Center, Flexbox, Grid, lobeStaticStylish } from '@lobehub/ui';
 import { createStaticStyles, cx, responsive } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import UserAvatar from '@/features/User/UserAvatar';
 
 import AiHeatmaps from '../../visualization/AiHeatmaps';

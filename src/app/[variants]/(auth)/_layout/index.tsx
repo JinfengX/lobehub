@@ -6,7 +6,7 @@ import { Divider } from 'antd';
 import { cx } from 'antd-style';
 import { type FC, type PropsWithChildren } from 'react';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import { useIsDark } from '@/hooks/useIsDark';
 
 import AuthLangButton from './AuthLangButton';

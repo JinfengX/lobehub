@@ -6,7 +6,7 @@ import { LoadingDots } from '@lobehub/ui/chat';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 
 interface LobeMessageProps extends Omit<FlexboxProps, 'children'> {
   fontSize?: number;

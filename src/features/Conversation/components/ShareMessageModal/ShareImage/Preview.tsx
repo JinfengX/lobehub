@@ -7,7 +7,7 @@ import { cx } from 'antd-style';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import { ChatItem } from '@/features/Conversation/ChatItem';
 import PluginTag from '@/features/PluginTag';
 import { useAgentStore } from '@/store/agent';

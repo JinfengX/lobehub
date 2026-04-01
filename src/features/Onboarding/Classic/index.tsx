@@ -2,7 +2,7 @@
 
 import { MAX_ONBOARDING_STEPS } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 
 import Loading from '@/components/Loading/BrandTextLoading';
 import ModeSwitch from '@/features/Onboarding/components/ModeSwitch';
@@ -16,46 +16,61 @@ import { useUserStore } from '@/store/user';
 import { onboardingSelectors } from '@/store/user/selectors';
 
 const ClassicOnboardingPage = memo(() => {
-  const [isUserStateInit, currentStep, goToNextStep, goToPreviousStep, resetOnboarding] =
-    useUserStore((s) => [
-      s.isUserStateInit,
-      onboardingSelectors.currentStep(s),
-      s.goToNextStep,
-      s.goToPreviousStep,
-      s.resetOnboarding,
-    ]);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isUserStateInit, currentStep, goToNextStep, goToPreviousStep] = useUserStore((s) => [
+    s.isUserStateInit,
+    onboardingSelectors.currentStep(s),
+    s.goToNextStep,
+    s.goToPreviousStep,
+  ]);
 
   if (!isUserStateInit) {
     return <Loading debugId="ClassicOnboarding" />;
   }
 
-  const handleReset = async () => {
-    setIsResetting(true);
-
-    try {
-      await resetOnboarding();
-    } finally {
-      setIsResetting(false);
-    }
-  };
+  const stepMap = {
+    1: {
+      Component: TelemetryStep,
+      name: 'TelemetryStep',
+      props: { onNext: goToNextStep },
+    },
+    2: {
+      Component: FullNameStep,
+      name: 'FullNameStep',
+      props: { onBack: goToPreviousStep, onNext: goToNextStep },
+    },
+    3: {
+      Component: InterestsStep,
+      name: 'InterestsStep',
+      props: { onBack: goToPreviousStep, onNext: goToNextStep },
+    },
+    4: {
+      Component: ResponseLanguageStep,
+      name: 'ResponseLanguageStep',
+      props: { onBack: goToPreviousStep, onNext: goToNextStep },
+    },
+    [MAX_ONBOARDING_STEPS]: {
+      Component: ProSettingsStep,
+      name: 'ProSettingsStep',
+      props: { onBack: goToPreviousStep },
+    },
+  } as const;
 
   const renderStep = () => {
     switch (currentStep) {
       case 1: {
-        return <TelemetryStep onNext={goToNextStep} />;
+        return <TelemetryStep {...stepMap[1].props} />;
       }
       case 2: {
-        return <FullNameStep onBack={goToPreviousStep} onNext={goToNextStep} />;
+        return <FullNameStep {...stepMap[2].props} />;
       }
       case 3: {
-        return <InterestsStep onBack={goToPreviousStep} onNext={goToNextStep} />;
+        return <InterestsStep {...stepMap[3].props} />;
       }
       case 4: {
-        return <ResponseLanguageStep onBack={goToPreviousStep} onNext={goToNextStep} />;
+        return <ResponseLanguageStep {...stepMap[4].props} />;
       }
       case MAX_ONBOARDING_STEPS: {
-        return <ProSettingsStep onBack={goToPreviousStep} />;
+        return <ProSettingsStep {...stepMap[MAX_ONBOARDING_STEPS].props} />;
       }
       default: {
         return null;

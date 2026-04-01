@@ -8,7 +8,7 @@ import { memo, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet } from 'react-router-dom';
 
-import { ProductLogo } from '@/components/Branding';
+import { ProductLogo } from '@/components/Branding/ProductLogo';
 import Loading from '@/components/Loading/BrandTextLoading';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useUserStore } from '@/store/user';
