@@ -1,11 +1,36 @@
 import { type DynamicInterventionResolver } from '@lobechat/types';
 
-import { isPathWithinScope, resolvePathWithScope } from './utils/path';
+import { normalizePathForScope, resolvePathWithScope } from './utils/path';
 
-/**
- * Extract all path values from tool arguments
- * Looks for common path parameter names used in local-system tools
- */
+const SAFE_PATH_PREFIXES = ['/tmp', '/var/tmp'] as const;
+
+interface SafePathAuditParams {
+  paths: string[];
+  resolveAgainstScope: string;
+}
+
+interface PathScopeAuditOptions {
+  areAllPathsSafe?: (params: SafePathAuditParams) => boolean | Promise<boolean>;
+}
+
+const isWithinPathPrefixes = (targetPath: string, prefixes: readonly string[]): boolean =>
+  prefixes.some((prefix) => targetPath === prefix || targetPath.startsWith(prefix + '/'));
+
+const isPathWithinWorkingDirectory = (
+  targetPath: string,
+  workingDirectory: string,
+  resolveAgainstScope: string,
+): boolean => {
+  const resolvedTarget = resolvePathWithScope(targetPath, resolveAgainstScope) ?? targetPath;
+  const normalizedTarget = normalizePathForScope(resolvedTarget);
+  const normalizedWorkingDir = normalizePathForScope(workingDirectory);
+
+  return (
+    normalizedTarget === normalizedWorkingDir ||
+    normalizedTarget.startsWith(normalizedWorkingDir + '/')
+  );
+};
+
 const extractPaths = (toolArgs: Record<string, any>): string[] => {
   const paths: string[] = [];
   const pathParamNames = ['path', 'file_path', 'directory', 'oldPath', 'newPath'];
@@ -17,13 +42,10 @@ const extractPaths = (toolArgs: Record<string, any>): string[] => {
     }
   }
 
-  // Only check 'pattern' when it's an absolute path (e.g. glob like /Users/me/**/*.ts).
-  // Relative globs (e.g. **/*.ts) and regex patterns (e.g. TODO|FIXME) are not paths.
   if (typeof toolArgs.pattern === 'string' && toolArgs.pattern.startsWith('/')) {
     paths.push(toolArgs.pattern);
   }
 
-  // Handle 'items' array for moveLocalFiles (contains oldPath/newPath objects)
   if (Array.isArray(toolArgs.items)) {
     for (const item of toolArgs.items) {
       if (typeof item === 'object') {
@@ -36,33 +58,51 @@ const extractPaths = (toolArgs: Record<string, any>): string[] => {
   return paths;
 };
 
-/**
- * Path scope audit for local-system tools
- * Returns true if any path is outside the working directory (requires intervention)
- */
-export const pathScopeAudit: DynamicInterventionResolver = (
-  toolArgs: Record<string, any>,
-  metadata?: Record<string, any>,
-): boolean => {
-  const workingDirectory = metadata?.workingDirectory as string | undefined;
-  const toolScope = toolArgs.scope as string | undefined;
+const areAllPathsSafeCandidates = (paths: string[], resolveAgainstScope: string): boolean => {
+  if (paths.length === 0) return false;
 
-  // If no working directory is set, no intervention needed
-  if (!workingDirectory) {
-    return false;
-  }
+  return paths.every((currentPath) => {
+    const resolvedPath = resolvePathWithScope(currentPath, resolveAgainstScope) ?? currentPath;
+    const normalizedPath = normalizePathForScope(resolvedPath);
 
-  // Match runtime behavior: a tool-provided scope is interpreted relative to workingDirectory.
-  // If the resolved scope escapes the workingDirectory, intervention is required.
-  if (toolScope && !isPathWithinScope(toolScope, workingDirectory, workingDirectory)) {
-    return true;
-  }
-
-  const effectiveScope =
-    resolvePathWithScope(toolScope, workingDirectory) ?? toolScope ?? workingDirectory;
-
-  const paths = extractPaths(toolArgs);
-
-  // Return true if any path is outside the working directory
-  return paths.some((path) => !isPathWithinScope(path, workingDirectory, effectiveScope));
+    return isWithinPathPrefixes(normalizedPath, SAFE_PATH_PREFIXES);
+  });
 };
+
+export const createPathScopeAudit = (
+  options: PathScopeAuditOptions = {},
+): DynamicInterventionResolver => {
+  const { areAllPathsSafe } = options;
+
+  return async (
+    toolArgs: Record<string, any>,
+    metadata?: Record<string, any>,
+  ): Promise<boolean> => {
+    const workingDirectory = metadata?.workingDirectory as string | undefined;
+    const toolScope = toolArgs.scope as string | undefined;
+
+    if (!workingDirectory) {
+      return false;
+    }
+
+    if (toolScope && !isPathWithinWorkingDirectory(toolScope, workingDirectory, workingDirectory)) {
+      return true;
+    }
+
+    const effectiveScope =
+      resolvePathWithScope(toolScope, workingDirectory) ?? toolScope ?? workingDirectory;
+
+    const paths = extractPaths(toolArgs);
+
+    if (areAllPathsSafe && areAllPathsSafeCandidates(paths, effectiveScope)) {
+      const allSafe = await areAllPathsSafe({ paths, resolveAgainstScope: effectiveScope });
+      if (allSafe) return false;
+    }
+
+    return paths.some(
+      (currentPath) => !isPathWithinWorkingDirectory(currentPath, workingDirectory, effectiveScope),
+    );
+  };
+};
+
+export const pathScopeAudit = createPathScopeAudit();

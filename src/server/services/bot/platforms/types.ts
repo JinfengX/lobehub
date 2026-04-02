@@ -100,6 +100,16 @@ export interface PlatformClient {
   extractChatId: (platformThreadId: string) => string;
 
   /**
+   * Transform outbound Markdown content into a format the platform can render.
+   * Called before `formatReply` and `splitMessage`.
+   *
+   * Platforms that don't support Markdown (e.g. WeChat, QQ) should strip
+   * formatting to plain text. Platforms with native Markdown support can
+   * omit this method — the content is passed through as-is.
+   */
+  formatMarkdown?: (markdown: string) => string;
+
+  /**
    * Format the final outbound reply from body content and optional usage stats.
    * Each platform decides whether to render the stats and how to format them
    * (e.g. Discord uses `-# stats` when the user enables usage display).
@@ -220,6 +230,7 @@ export abstract class ClientFactory {
     _credentials: Record<string, string>,
     _settings?: Record<string, unknown>,
     _applicationId?: string,
+    _platform?: string,
   ): Promise<ValidationResult> {
     return { valid: true };
   }
@@ -241,23 +252,16 @@ export abstract class ClientFactory {
  * Contains metadata, factory, and validation. All runtime operations go through PlatformClient.
  */
 export interface PlatformDefinition {
-  /**
-   * Authentication flow for obtaining credentials.
-   * - 'qrcode': QR code scan flow (e.g. WeChat iLink)
-   * When set, the frontend renders a QR code auth UI instead of manual credential inputs.
-   */
-  authFlow?: 'qrcode';
-
   /** Factory for creating PlatformClient instances and validating credentials/settings. */
   clientFactory: ClientFactory;
 
   /**
    * Connection mode: how the platform communicates with the server.
    * - 'webhook': stateless HTTP callbacks (can run in serverless)
-   * - 'websocket': persistent connection (requires long-running process)
+   * - 'persistent': requires a long-running client (e.g. websocket or long-polling)
    * Defaults to 'webhook'.
    */
-  connectionMode?: 'webhook' | 'websocket';
+  connectionMode?: 'persistent' | 'webhook';
 
   /** The description of the platform. */
   description?: string;
@@ -276,6 +280,14 @@ export interface PlatformDefinition {
 
   /** Whether to show webhook URL for manual configuration. When true, the UI displays the webhook endpoint for the user to copy. */
   showWebhookUrl?: boolean;
+
+  /**
+   * Whether the platform supports rendering Markdown in messages.
+   * When false, outbound markdown is converted to plain text before sending,
+   * and the AI is instructed to avoid markdown formatting.
+   * Defaults to true.
+   */
+  supportsMarkdown?: boolean;
 
   /**
    * Whether the platform supports editing sent messages.

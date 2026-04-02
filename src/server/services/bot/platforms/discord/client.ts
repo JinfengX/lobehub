@@ -4,6 +4,12 @@ import type { Chat as ChatBot } from 'chat';
 import debug from 'debug';
 
 import {
+  BOT_RUNTIME_STATUSES,
+  getRuntimeStatusErrorMessage,
+  updateBotRuntimeStatus,
+} from '@/server/services/gateway/runtimeStatus';
+
+import {
   type BotPlatformRuntimeContext,
   type BotProviderConfig,
   ClientFactory,
@@ -14,10 +20,11 @@ import {
 } from '../types';
 import { formatUsageStats } from '../utils';
 import { DiscordApi } from './api';
-import { patchDiscordForwardedInteractions } from './patch';
+import { patchDiscordForwardedInteractions, patchDiscordThreadRecovery } from './patch';
 
 const log = debug('bot-platform:discord:bot');
 
+const CONNECTED_STATUS_TTL_BUFFER_MS = 60 * 1000;
 const DEFAULT_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 export interface GatewayListenerOptions {
@@ -28,6 +35,13 @@ export interface GatewayListenerOptions {
 function extractChannelId(platformThreadId: string): string {
   const parts = platformThreadId.split(':');
   return parts[3] || parts[2];
+}
+
+function isSubscribableThread(platformThreadId: string): boolean {
+  const [, guildId, , discordThreadId] = platformThreadId.split(':');
+
+  // Keep DM conversations multi-turn, but avoid subscribing to top-level guild channels.
+  return guildId === '@me' || !!discordThreadId;
 }
 
 class DiscordGatewayClient implements PlatformClient {
@@ -55,61 +69,92 @@ class DiscordGatewayClient implements PlatformClient {
 
     this.stopped = false;
     this.abort = new AbortController();
-
-    const adapter = createDiscordAdapter({
-      applicationId: this.config.applicationId,
-      botToken: this.config.credentials.botToken,
-      publicKey: this.config.credentials.publicKey,
-    });
-
-    const { Chat, ConsoleLogger } = await import('chat');
-
-    const chatConfig: any = {
-      adapters: { discord: adapter },
-      userName: `lobehub-gateway-${this.applicationId}`,
-    };
-
-    if (this.context.redisClient) {
-      const { createIoRedisState } = await import('@chat-adapter/state-ioredis');
-      chatConfig.state = createIoRedisState({
-        client: this.context.redisClient as any,
-        logger: new ConsoleLogger(),
-      });
-    }
-
-    const bot = new Chat(chatConfig);
-    await bot.initialize();
-
-    const discordAdapter = (bot as any).adapters.get('discord') as DiscordAdapter;
     const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
-    const waitUntil = options?.waitUntil ?? ((task: Promise<any>) => task.catch(() => {}));
-
-    const webhookUrl = `${(this.context.appUrl || '').trim()}/api/agent/webhooks/discord/${this.applicationId}`;
-
-    await discordAdapter.startGatewayListener(
-      { waitUntil },
-      durationMs,
-      this.abort.signal,
-      webhookUrl,
+    const runtimeStatusTtlMs = durationMs + CONNECTED_STATUS_TTL_BUFFER_MS;
+    await updateBotRuntimeStatus(
+      {
+        applicationId: this.applicationId,
+        platform: this.id,
+        status: BOT_RUNTIME_STATUSES.starting,
+      },
+      { redisClient: this.context.redisClient as any, ttlMs: runtimeStatusTtlMs },
     );
 
-    if (!options) {
-      this.refreshTimer = setTimeout(() => {
-        if (this.abort.signal.aborted || this.stopped) return;
+    try {
+      const adapter = createDiscordAdapter({
+        applicationId: this.config.applicationId,
+        botToken: this.config.credentials.botToken,
+        publicKey: this.config.credentials.publicKey,
+      });
 
-        log(
-          'DiscordBot appId=%s duration elapsed (%dh), refreshing...',
-          this.applicationId,
-          durationMs / 3_600_000,
-        );
-        this.abort.abort();
-        this.start().catch((err) => {
-          log('Failed to refresh DiscordBot appId=%s: %O', this.applicationId, err);
+      const { Chat, ConsoleLogger } = await import('chat');
+
+      const chatConfig: any = {
+        adapters: { discord: adapter },
+        userName: `lobehub-gateway-${this.applicationId}`,
+      };
+
+      if (this.context.redisClient) {
+        const { createIoRedisState } = await import('@chat-adapter/state-ioredis');
+        chatConfig.state = createIoRedisState({
+          client: this.context.redisClient as any,
+          logger: new ConsoleLogger(),
         });
-      }, durationMs);
-    }
+      }
 
-    log('DiscordBot appId=%s started, webhookUrl=%s', this.applicationId, webhookUrl);
+      const bot = new Chat(chatConfig);
+      await bot.initialize();
+
+      const discordAdapter = (bot as any).adapters.get('discord') as DiscordAdapter;
+      const waitUntil = options?.waitUntil ?? ((task: Promise<any>) => task.catch(() => {}));
+
+      const webhookUrl = `${(this.context.appUrl || '').trim()}/api/agent/webhooks/discord/${this.applicationId}`;
+
+      await discordAdapter.startGatewayListener(
+        { waitUntil },
+        durationMs,
+        this.abort.signal,
+        webhookUrl,
+      );
+
+      if (!options) {
+        this.refreshTimer = setTimeout(() => {
+          if (this.abort.signal.aborted || this.stopped) return;
+
+          log(
+            'DiscordBot appId=%s duration elapsed (%dh), refreshing...',
+            this.applicationId,
+            durationMs / 3_600_000,
+          );
+          this.abort.abort();
+          this.start().catch((err) => {
+            log('Failed to refresh DiscordBot appId=%s: %O', this.applicationId, err);
+          });
+        }, durationMs);
+      }
+
+      await updateBotRuntimeStatus(
+        {
+          applicationId: this.applicationId,
+          platform: this.id,
+          status: BOT_RUNTIME_STATUSES.connected,
+        },
+        { redisClient: this.context.redisClient as any, ttlMs: runtimeStatusTtlMs },
+      );
+
+      log('DiscordBot appId=%s started, webhookUrl=%s', this.applicationId, webhookUrl);
+    } catch (error) {
+      await updateBotRuntimeStatus(
+        {
+          applicationId: this.applicationId,
+          errorMessage: getRuntimeStatusErrorMessage(error),
+          platform: this.id,
+          status: BOT_RUNTIME_STATUSES.failed,
+        },
+        { redisClient: this.context.redisClient as any, ttlMs: runtimeStatusTtlMs },
+      );
+      throw error;
+    }
   }
 
   async stop(): Promise<void> {
@@ -120,12 +165,21 @@ class DiscordGatewayClient implements PlatformClient {
       this.refreshTimer = null;
     }
     this.abort.abort();
+    await updateBotRuntimeStatus(
+      {
+        applicationId: this.applicationId,
+        platform: this.id,
+        status: BOT_RUNTIME_STATUSES.disconnected,
+      },
+      { redisClient: this.context.redisClient as any },
+    );
   }
 
   // --- Runtime Operations ---
 
   applyChatPatches(chatBot: ChatBot<any>): void {
     patchDiscordForwardedInteractions(chatBot);
+    patchDiscordThreadRecovery(chatBot);
   }
 
   createAdapter(): Record<string, any> {
@@ -182,6 +236,10 @@ class DiscordGatewayClient implements PlatformClient {
 
   sanitizeUserInput(text: string): string {
     return text.replaceAll(new RegExp(`<@!?${this.applicationId}>\\s*`, 'g'), '').trim();
+  }
+
+  shouldSubscribe(threadId: string): boolean {
+    return isSubscribableThread(threadId);
   }
 
   async registerBotCommands(

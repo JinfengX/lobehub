@@ -82,9 +82,6 @@ export class BotCallbackService {
     if (type === 'step') {
       if (canEdit && progressMessageId) {
         await this.handleStep(body, messenger, progressMessageId, client);
-      } else if (body.shouldContinue) {
-        // For platforms without progress messages (e.g. WeChat), still send typing indicator
-        await messenger.triggerTyping();
       }
     } else if (type === 'completion') {
       await this.handleCompletion(
@@ -183,7 +180,8 @@ export class BotCallbackService {
       totalTokens: body.totalTokens ?? 0,
     };
 
-    const progressText = client.formatReply?.(msgBody, stats) ?? msgBody;
+    const formatted = client.formatMarkdown?.(msgBody) ?? msgBody;
+    const progressText = client.formatReply?.(formatted, stats) ?? formatted;
 
     const isLlmFinalResponse =
       body.stepType === 'call_llm' && !body.toolsCalling?.length && body.content;
@@ -211,7 +209,7 @@ export class BotCallbackService {
     if (reason === 'error') {
       const errorText = renderError(errorMessage || 'Agent execution failed');
       try {
-        if (canEdit) {
+        if (canEdit && progressMessageId) {
           await messenger.editMessage(progressMessageId, errorText);
         } else {
           await messenger.createMessage(errorText);
@@ -247,17 +245,18 @@ export class BotCallbackService {
       totalTokens: body.totalTokens ?? 0,
     };
 
-    const finalText = client.formatReply?.(msgBody, stats) ?? msgBody;
+    const formattedBody = client.formatMarkdown?.(msgBody) ?? msgBody;
+    const finalText = client.formatReply?.(formattedBody, stats) ?? formattedBody;
     const chunks = splitMessage(finalText, charLimit);
 
     try {
-      if (canEdit) {
+      if (canEdit && progressMessageId) {
         await messenger.editMessage(progressMessageId, chunks[0]);
         for (let i = 1; i < chunks.length; i++) {
           await messenger.createMessage(chunks[i]);
         }
       } else {
-        // Platform doesn't support edit — send all chunks as new messages
+        // No progress message to edit or platform doesn't support edit — send all chunks as new messages
         for (const chunk of chunks) {
           await messenger.createMessage(chunk);
         }

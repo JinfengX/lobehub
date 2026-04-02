@@ -9,6 +9,7 @@ import Loading from '@/components/Loading/BrandTextLoading';
 import NavHeader from '@/features/NavHeader';
 import { useAgentStore } from '@/store/agent';
 
+import { BOT_RUNTIME_STATUSES, type BotRuntimeStatus } from '../../../../types/botRuntimeStatus';
 import PlatformDetail from './detail';
 import PlatformList from './list';
 
@@ -39,8 +40,17 @@ const ChannelPage = memo(() => {
   // Default to first platform once loaded
   const effectiveActiveId = activeProviderId || platforms?.[0]?.id || '';
 
-  const connectedPlatforms = useMemo(
-    () => new Set(providers?.filter((p) => p.enabled).map((p) => p.platform) ?? []),
+  const platformRuntimeStatuses = useMemo(
+    () =>
+      new Map<string, BotRuntimeStatus>(
+        (providers ?? [])
+          .filter((provider) => provider.enabled)
+          .map((provider) => [
+            provider.platform,
+            ((provider as any).runtimeStatus as BotRuntimeStatus) ??
+              BOT_RUNTIME_STATUSES.disconnected,
+          ]),
+      ),
     [providers],
   );
 
@@ -66,8 +76,10 @@ const ChannelPage = memo(() => {
           <div className={styles.container}>
             <PlatformList
               activeId={effectiveActiveId}
-              connectedPlatforms={connectedPlatforms}
+              agentId={aid}
               platforms={platforms}
+              providers={providers}
+              runtimeStatuses={platformRuntimeStatuses}
               onSelect={setActiveProviderId}
             />
             <PlatformDetail

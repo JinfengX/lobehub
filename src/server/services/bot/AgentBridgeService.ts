@@ -17,7 +17,6 @@ import { SystemAgentService } from '@/server/services/systemAgent';
 import { formatPrompt as formatPromptUtil } from './formatPrompt';
 import type { PlatformClient } from './platforms';
 import { platformRegistry } from './platforms';
-import { DEFAULT_DEBOUNCE_MS } from './platforms/const';
 import {
   renderError,
   renderFinalReply,
@@ -30,6 +29,10 @@ import {
 const log = debug('lobe-server:bot:agent-bridge');
 
 const EXECUTION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+// PostgreSQL error code for foreign key constraint violations.
+// See: https://www.postgresql.org/docs/current/errcodes-appendix.html
+const PG_FOREIGN_KEY_VIOLATION = '23503';
 
 // Status emoji added on receive, removed on complete
 const RECEIVED_EMOJI = emoji.eyes;
@@ -87,7 +90,6 @@ interface BridgeHandlerOpts {
   botContext?: ChatTopicBotContext;
   charLimit?: number;
   client?: PlatformClient;
-  debounceMs?: number;
 }
 
 /**
@@ -196,92 +198,6 @@ export class AgentBridgeService {
     }
   }
 
-  /**
-   * Debounce buffer for incoming messages per thread.
-   * Users often send multiple short messages in quick succession (e.g. "hello" + "how are you").
-   * Instead of triggering separate agent executions for each, we collect messages arriving
-   * within a short window and merge them into a single prompt.
-   */
-  private static pendingMessages = new Map<
-    string,
-    {
-      messages: Message[];
-      resolve: () => void;
-      timer: ReturnType<typeof setTimeout>;
-    }
-  >();
-
-  /**
-   * Buffer a message and return a promise that resolves when the debounce window closes.
-   * Returns the collected messages if this call "wins" the debounce (is the first),
-   * or null if the message was appended to an existing pending batch.
-   *
-   * Messages with attachments flush immediately (no debounce) to avoid delaying
-   * file-heavy interactions.
-   */
-  private static bufferMessage(
-    threadId: string,
-    message: Message,
-    debounceMs: number,
-  ): Promise<Message[] | null> {
-    // Flush immediately if the message has attachments
-    const hasAttachments = !!(message as any).attachments?.length;
-
-    const existing = AgentBridgeService.pendingMessages.get(threadId);
-
-    if (existing) {
-      // Append to existing batch and reset the timer
-      existing.messages.push(message);
-      clearTimeout(existing.timer);
-
-      if (hasAttachments) {
-        // Flush now
-        existing.resolve();
-      } else {
-        existing.timer = setTimeout(() => existing.resolve(), debounceMs);
-      }
-
-      return Promise.resolve(null); // not the owner
-    }
-
-    // First message — create a new batch
-    if (hasAttachments) {
-      return Promise.resolve([message]); // no debounce
-    }
-
-    return new Promise<Message[]>((resolve) => {
-      const batch = {
-        messages: [message],
-        resolve: () => {
-          const entry = AgentBridgeService.pendingMessages.get(threadId);
-          AgentBridgeService.pendingMessages.delete(threadId);
-          resolve(entry?.messages ?? [message]);
-        },
-        timer: setTimeout(() => {
-          const entry = AgentBridgeService.pendingMessages.get(threadId);
-          if (entry) entry.resolve();
-        }, debounceMs),
-      };
-      AgentBridgeService.pendingMessages.set(threadId, batch);
-    });
-  }
-
-  /**
-   * Merge multiple messages into a single synthetic Message for the agent.
-   * Preserves the first message's metadata (author, raw, attachments) and
-   * concatenates all text with newlines.
-   */
-  private static mergeMessages(messages: Message[]): Message {
-    if (messages.length === 1) return messages[0];
-
-    const first = messages[0];
-    const mergedText = messages.map((m) => m.text).join('\n');
-
-    return Object.assign(Object.create(Object.getPrototypeOf(first)), first, {
-      text: mergedText,
-    });
-  }
-
   constructor(db: LobeChatDatabase, userId: string) {
     this.db = db;
     this.userId = userId;
@@ -331,7 +247,7 @@ export class AgentBridgeService {
     message: Message,
     opts: BridgeHandlerOpts,
   ): Promise<void> {
-    const { agentId, botContext, charLimit, debounceMs } = opts;
+    const { agentId, botContext, charLimit } = opts;
 
     log(
       'handleMention: agentId=%s, user=%s, text=%s',
@@ -345,26 +261,6 @@ export class AgentBridgeService {
       log('handleMention: skipping, thread=%s already has an active execution', thread.id);
       return;
     }
-
-    // Debounce: buffer rapid-fire messages and merge them into one prompt.
-    // The first caller wins and drives the execution; subsequent callers
-    // append their message to the buffer and return immediately.
-    const batch = await AgentBridgeService.bufferMessage(
-      thread.id,
-      message,
-      debounceMs ?? DEFAULT_DEBOUNCE_MS,
-    );
-    if (!batch) {
-      log('handleMention: message buffered for thread=%s, waiting for debounce', thread.id);
-      return;
-    }
-
-    const mergedMessage = AgentBridgeService.mergeMessages(batch);
-    log(
-      'handleMention: debounce done, %d message(s) merged for thread=%s',
-      batch.length,
-      thread.id,
-    );
 
     AgentBridgeService.activeThreads.add(thread.id);
 
@@ -384,20 +280,16 @@ export class AgentBridgeService {
 
     await thread.startTyping();
 
-    // Keep typing indicator alive (Telegram's expires after ~5s)
-    const typingInterval = setInterval(() => {
-      thread.startTyping().catch(() => {});
-    }, 4000);
-
     // Fetch channel context for Discord context injection
     const channelContext = await this.fetchChannelContext(thread);
 
     const queueMode = isQueueAgentRuntimeEnabled();
+    let queueHandoffSucceeded = false;
 
     try {
       // executeWithCallback handles progress message (post + edit at each step)
       // The final reply is edited into the progress message by onComplete
-      const { topicId } = await this.executeWithCallback(thread, mergedMessage, {
+      const { topicId } = await this.executeWithCallback(thread, message, {
         agentId,
         botContext,
         channelContext,
@@ -405,6 +297,7 @@ export class AgentBridgeService {
         client,
         trigger: RequestTrigger.Bot,
       });
+      queueHandoffSucceeded = queueMode;
 
       // Persist topic mapping and channel context in thread state for follow-up messages
       // Skip if the platform opted out of auto-subscribe (no subscribe = no follow-up)
@@ -417,12 +310,10 @@ export class AgentBridgeService {
       const msg = error instanceof Error ? error.message : String(error);
       await thread.post(`**Agent Execution Failed**\n\`\`\`\n${msg}\n\`\`\``);
     } finally {
-      clearInterval(typingInterval);
-      // In queue mode, the agent is still running on the job queue after
-      // executeWithWebhooks returns. Keep the thread marked active so /stop
-      // can find and interrupt it. The completion callback clears it instead.
-      if (!queueMode) {
-        AgentBridgeService.activeThreads.delete(thread.id);
+      AgentBridgeService.activeThreads.delete(thread.id);
+      // In queue mode, the callback owns cleanup only after webhook handoff succeeds.
+      // If setup fails before that point, clean up locally to avoid leaked reactions.
+      if (!queueMode || !queueHandoffSucceeded) {
         await this.removeReceivedReaction(thread, message, client);
       }
     }
@@ -436,7 +327,7 @@ export class AgentBridgeService {
     message: Message,
     opts: BridgeHandlerOpts,
   ): Promise<void> {
-    const { agentId, botContext, charLimit, debounceMs } = opts;
+    const { agentId, botContext, charLimit } = opts;
     const threadState = await thread.state;
     const topicId = threadState?.topicId;
 
@@ -456,30 +347,13 @@ export class AgentBridgeService {
       return;
     }
 
-    // Debounce: same as handleMention — merge rapid-fire messages
-    const batch = await AgentBridgeService.bufferMessage(
-      thread.id,
-      message,
-      debounceMs ?? DEFAULT_DEBOUNCE_MS,
-    );
-    if (!batch) {
-      log('handleSubscribedMessage: message buffered for thread=%s', thread.id);
-      return;
-    }
-
-    const mergedMessage = AgentBridgeService.mergeMessages(batch);
-    log(
-      'handleSubscribedMessage: debounce done, %d message(s) merged for thread=%s',
-      batch.length,
-      thread.id,
-    );
-
     AgentBridgeService.activeThreads.add(thread.id);
 
     // Read cached channel context from thread state
     const channelContext = threadState?.channelContext;
 
     const queueMode = isQueueAgentRuntimeEnabled();
+    let queueHandoffSucceeded = false;
 
     // Immediate feedback: mark as received + show typing
     const reactionThreadId =
@@ -490,14 +364,9 @@ export class AgentBridgeService {
     );
     await thread.startTyping();
 
-    // Keep typing indicator alive (Telegram's expires after ~5s)
-    const typingInterval = setInterval(() => {
-      thread.startTyping().catch(() => {});
-    }, 4000);
-
     try {
       // executeWithCallback handles progress message (post + edit at each step)
-      await this.executeWithCallback(thread, mergedMessage, {
+      await this.executeWithCallback(thread, message, {
         agentId,
         botContext,
         channelContext,
@@ -506,15 +375,20 @@ export class AgentBridgeService {
         topicId,
         trigger: RequestTrigger.Bot,
       });
+      queueHandoffSucceeded = queueMode;
     } catch (error) {
       // If the cached topicId references a deleted topic (FK violation),
       // clear thread state and retry as a fresh mention instead of surfacing the DB error.
+      const cause = (error as any)?.cause;
+      const isFKViolation =
+        cause?.code === PG_FOREIGN_KEY_VIOLATION && cause?.constraint?.includes('topic_id');
       const errMsg = error instanceof Error ? error.message : String(error);
-      if (errMsg.includes('Failed query') && errMsg.includes('topic_id')) {
+      if (isFKViolation) {
         log(
           'handleSubscribedMessage: stale topicId=%s, resetting and retrying as new mention',
           topicId,
         );
+        AgentBridgeService.activeThreads.delete(thread.id);
         await thread.setState({ ...threadState, topicId: undefined });
         return this.handleMention(thread, message, opts);
       }
@@ -522,9 +396,9 @@ export class AgentBridgeService {
       log('handleSubscribedMessage error: %O', error);
       await thread.post(`**Agent Execution Failed**. Details:\n\`\`\`\n${errMsg}\n\`\`\``);
     } finally {
-      clearInterval(typingInterval);
-      if (!queueMode) {
-        AgentBridgeService.activeThreads.delete(thread.id);
+      AgentBridgeService.activeThreads.delete(thread.id);
+      // In queue mode, the callback owns cleanup only after webhook handoff succeeds.
+      if (!queueMode || !queueHandoffSucceeded) {
         await this.removeReceivedReaction(thread, message, opts.client);
       }
     }
@@ -546,10 +420,24 @@ export class AgentBridgeService {
       trigger?: string;
     },
   ): Promise<{ reply: string; topicId: string }> {
-    if (isQueueAgentRuntimeEnabled()) {
-      return this.executeWithWebhooks(thread, userMessage, opts);
+    // Resolve bot platform context from platform registry
+    let botPlatformContext: { platformName: string; supportsMarkdown: boolean } | undefined;
+    if (opts.botContext?.platform) {
+      const platformDef = platformRegistry.getPlatform(opts.botContext.platform);
+      if (platformDef) {
+        botPlatformContext = {
+          platformName: platformDef.name,
+          supportsMarkdown: platformDef.supportsMarkdown !== false,
+        };
+      }
     }
-    return this.executeWithInMemoryCallbacks(thread, userMessage, opts);
+
+    const optsWithPlatform = { ...opts, botPlatformContext };
+
+    if (isQueueAgentRuntimeEnabled()) {
+      return this.executeWithWebhooks(thread, userMessage, optsWithPlatform);
+    }
+    return this.executeWithInMemoryCallbacks(thread, userMessage, optsWithPlatform);
   }
 
   /**
@@ -563,43 +451,29 @@ export class AgentBridgeService {
     opts: {
       agentId: string;
       botContext?: ChatTopicBotContext;
+      botPlatformContext?: { platformName: string; supportsMarkdown: boolean };
       channelContext?: DiscordChannelContext;
       client?: PlatformClient;
       topicId?: string;
       trigger?: string;
     },
   ): Promise<{ reply: string; topicId: string }> {
-    const { agentId, botContext, channelContext, client, topicId, trigger } = opts;
+    const { agentId, botContext, botPlatformContext, channelContext, client, topicId, trigger } =
+      opts;
 
     const aiAgentService = new AiAgentService(this.db, this.userId);
     const timezone = await this.loadTimezone();
 
-    // Skip initial ack message for platforms that don't support editing (e.g. WeChat, QQ).
-    // The ack can't be edited into the final reply, so it would stay as a stale extra message.
-    const canEdit = platformRegistry.getPlatform(client?.id ?? '')?.supportsMessageEdit !== false;
+    await thread.startTyping();
 
     let progressMessage: SentMessage | undefined;
-    let progressMessageId: string | undefined;
-    if (canEdit) {
-      // Post initial progress message to get the message ID
-      try {
-        progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
-      } catch (error) {
-        log('executeWithWebhooks: failed to post progress message: %O', error);
-      }
-
-      progressMessageId = progressMessage?.id;
-      if (!progressMessageId) {
-        throw new Error('Failed to post initial progress message');
-      }
-
-      // Refresh typing indicator after posting the ack message,
-      // so typing stays active until the first step webhook arrives
-      await thread.startTyping();
-    } else {
-      // No ack message — still refresh typing so the user knows the bot is working
-      await thread.startTyping();
+    try {
+      progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
+    } catch (error) {
+      log('executeWithWebhooks: failed to post initial placeholder message: %O', error);
     }
+
+    const progressMessageId: string | undefined = progressMessage?.id;
 
     // Build webhook URL for bot-callback endpoint
     // Prefer INTERNAL_APP_URL for server-to-server calls (bypasses CDN/proxy)
@@ -636,6 +510,7 @@ export class AgentBridgeService {
           appContext: topicId ? { topicId } : undefined,
           autoStart: true,
           botContext,
+          botPlatformContext,
           completionWebhook: { body: webhookBody, url: callbackUrl },
           discordContext: channelContext
             ? { channel: channelContext.channel, guild: channelContext.guild }
@@ -651,6 +526,15 @@ export class AgentBridgeService {
         }),
       );
     } catch (error) {
+      log('executeWithWebhooks: execAgent failed: %O', error);
+
+      // For stale topicId FK violations, re-throw so handleSubscribedMessage can clear
+      // the cached topicId and retry as a fresh mention instead of showing a DB error.
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (errMsg.includes('Failed query') && errMsg.includes('topic_id')) {
+        throw error;
+      }
+
       await this.finishStartupFailure({
         error,
         progressMessage,
@@ -708,6 +592,7 @@ export class AgentBridgeService {
     opts: {
       agentId: string;
       botContext?: ChatTopicBotContext;
+      botPlatformContext?: { platformName: string; supportsMarkdown: boolean };
       channelContext?: DiscordChannelContext;
       charLimit?: number;
       client?: PlatformClient;
@@ -715,25 +600,27 @@ export class AgentBridgeService {
       trigger?: string;
     },
   ): Promise<{ reply: string; topicId: string }> {
-    const { agentId, botContext, channelContext, charLimit, client, topicId, trigger } = opts;
+    const {
+      agentId,
+      botContext,
+      botPlatformContext,
+      channelContext,
+      charLimit,
+      client,
+      topicId,
+      trigger,
+    } = opts;
 
     const aiAgentService = new AiAgentService(this.db, this.userId);
     const timezone = await this.loadTimezone();
 
-    // Skip initial ack message for platforms that don't support editing (e.g. WeChat, QQ).
-    const canEdit = platformRegistry.getPlatform(client?.id ?? '')?.supportsMessageEdit !== false;
+    await thread.startTyping();
 
     let progressMessage: SentMessage | undefined;
-    if (canEdit) {
-      // Post initial progress message
-      try {
-        progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
-      } catch (error) {
-        log('executeWithInMemoryCallbacks: failed to post progress message: %O', error);
-      }
-    } else {
-      // No ack message — still refresh typing so the user knows the bot is working
-      await thread.startTyping();
+    try {
+      progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
+    } catch (error) {
+      log('executeWithInMemoryCallbacks: failed to post initial placeholder message: %O', error);
     }
 
     // Track the last LLM content and tool calls for showing during tool execution
@@ -770,6 +657,7 @@ export class AgentBridgeService {
           appContext: topicId ? { topicId } : undefined,
           autoStart: true,
           botContext,
+          botPlatformContext,
           discordContext: channelContext
             ? { channel: channelContext.channel, guild: channelContext.guild }
             : undefined,
@@ -797,7 +685,8 @@ export class AgentBridgeService {
                 totalCost: stepData.totalCost ?? 0,
                 totalTokens: stepData.totalTokens ?? 0,
               };
-              const progressText = client?.formatReply?.(msgBody, stats) ?? msgBody;
+              const formatted = client?.formatMarkdown?.(msgBody) ?? msgBody;
+              const progressText = client?.formatReply?.(formatted, stats) ?? formatted;
 
               if (content) lastLLMContent = content;
               if (toolsCalling) lastToolsCalling = toolsCalling;
@@ -860,7 +749,9 @@ export class AgentBridgeService {
                     totalCost: finalState.cost?.total ?? 0,
                     totalTokens: finalState.usage?.llm?.tokens?.total ?? 0,
                   };
-                  const finalText = client?.formatReply?.(replyBody, replyStats) ?? replyBody;
+                  const formattedBody = client?.formatMarkdown?.(replyBody) ?? replyBody;
+                  const finalText =
+                    client?.formatReply?.(formattedBody, replyStats) ?? formattedBody;
 
                   const chunks = splitMessage(finalText, charLimit);
 
@@ -1054,10 +945,17 @@ export class AgentBridgeService {
    * Extract file attachment metadata from Chat SDK message for passing to execAgent.
    * Includes attachments from both the message itself and any referenced (quoted) message.
    */
-  private extractFiles(
-    message: Message,
-  ): Array<{ mimeType?: string; name?: string; size?: number; url: string }> | undefined {
+  private extractFiles(message: Message):
+    | Array<{
+        buffer?: Buffer;
+        mimeType?: string;
+        name?: string;
+        size?: number;
+        url: string;
+      }>
+    | undefined {
     type AttachmentLike = {
+      buffer?: Buffer;
       content_type?: string;
       filename?: string;
       mimeType?: string;
@@ -1067,18 +965,25 @@ export class AgentBridgeService {
       url?: string;
     };
 
-    const files: Array<{ mimeType?: string; name?: string; size?: number; url: string }> = [];
+    const files: Array<{
+      buffer?: Buffer;
+      mimeType?: string;
+      name?: string;
+      size?: number;
+      url: string;
+    }> = [];
 
     // 1. Direct attachments from the message (parsed by Chat SDK)
     const directAttachments = (message as any).attachments as AttachmentLike[] | undefined;
     if (directAttachments?.length) {
       for (const att of directAttachments) {
-        if (att.url) {
+        if (att.url || att.buffer) {
           files.push({
+            buffer: att.buffer,
             mimeType: att.mimeType,
             name: att.name,
             size: att.size,
-            url: att.url,
+            url: att.url || '',
           });
         }
       }

@@ -158,9 +158,11 @@ export default {
   'agentSkillModal.contentPlaceholder': 'Enter skill content in Markdown format...',
   'agentSkillModal.description': 'Description',
   'agentSkillModal.descriptionPlaceholder': 'Briefly describe this skill',
-  'agentSkillModal.github.desc': 'Import skills directly from a public GitHub repository.',
+  'agentSkillModal.github.desc':
+    'Paste the URL of a skill directory from a public GitHub repository. The directory must contain a SKILL.md file.',
   'agentSkillModal.github.title': 'Import from GitHub',
-  'agentSkillModal.github.urlPlaceholder': 'https://github.com/username/repo',
+  'agentSkillModal.github.urlPlaceholder':
+    'https://github.com/username/repo/tree/main/skills/my-skill',
   'agentSkillModal.importError': 'Import failed: {{error}}',
   'agentSkillModal.importSuccess': 'Agent Skill imported successfully',
   'agentSkillModal.upload.desc': 'Upload a local .zip or .skill file to install.',
@@ -448,6 +450,12 @@ export default {
   'memory.enabled.title': 'Enable Memory',
   'memory.title': 'Memory Settings',
   'message.success': 'Update successful',
+  'notification.enabled': 'Enabled',
+  'notification.email.desc': 'Receive email notifications when important events occur',
+  'notification.email.title': 'Email Notifications',
+  'notification.inbox.desc': 'Show notifications in the in-app inbox',
+  'notification.inbox.title': 'Inbox Notifications',
+  'notification.title': 'Notification Channels',
   'myAgents.actions.cancel': 'Cancel',
   'myAgents.actions.confirmDeprecate': 'Confirm Deprecate',
   'myAgents.actions.deprecate': 'Deprecate Permanently',
@@ -670,7 +678,7 @@ export default {
   'settingImage.defaultCount.desc':
     'Set the default number of images generated when creating a new task in the image generation panel.',
   'settingImage.defaultCount.label': 'Default Image Count',
-  'settingImage.defaultCount.title': 'AI Art',
+  'settingImage.defaultCount.title': 'AI Image',
   'settingModel.enableContextCompression.desc':
     'Automatically compress historical messages into summaries when conversation exceeds 64,000 tokens, saving 60-80% token usage',
   'settingModel.enableContextCompression.title': 'Enable Auto Context Compression',
@@ -869,8 +877,9 @@ When I am ___, I need ___
   'systemAgent.customPrompt.placeholder': 'Please enter custom prompt',
   'systemAgent.customPrompt.title': 'Custom Prompt',
   'systemAgent.generationTopic.label': 'Model',
-  'systemAgent.generationTopic.modelDesc': 'Model designated for automatic naming of AI art topics',
-  'systemAgent.generationTopic.title': 'AI Art Topic Naming Agent',
+  'systemAgent.generationTopic.modelDesc':
+    'Model designated for automatic naming of AI image topics',
+  'systemAgent.generationTopic.title': 'AI Image Topic Naming Agent',
   'systemAgent.helpInfo':
     'When creating a new agent, the default agent settings will be used as preset values.',
   'systemAgent.historyCompress.label': 'Model',
@@ -924,6 +933,7 @@ When I am ___, I need ___
   'tab.manualFill': 'Manually Fill In',
   'tab.manualFill.desc': 'Configure a custom MCP skill manually',
   'tab.memory': 'Memory',
+  'tab.notification': 'Notifications',
   'tab.profile': 'My Account',
   'tab.provider': 'Provider',
   'tab.proxy': 'Proxy',

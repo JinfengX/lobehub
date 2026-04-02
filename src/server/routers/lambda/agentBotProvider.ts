@@ -9,6 +9,7 @@ import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { getBotMessageRouter } from '@/server/services/bot/BotMessageRouter';
 import { platformRegistry } from '@/server/services/bot/platforms';
 import { GatewayService } from '@/server/services/gateway';
+import { getBotRuntimeStatus } from '@/server/services/gateway/runtimeStatus';
 
 const agentBotProviderProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -72,7 +73,22 @@ export const agentBotProviderRouter = router({
   getByAgentId: agentBotProviderProcedure
     .input(z.object({ agentId: z.string() }))
     .query(async ({ input, ctx }) => {
-      return ctx.agentBotProviderModel.findByAgentId(input.agentId);
+      const providers = await ctx.agentBotProviderModel.findByAgentId(input.agentId);
+
+      const statuses = await Promise.all(
+        providers.map((p) => getBotRuntimeStatus(p.platform, p.applicationId)),
+      );
+
+      return providers.map((p, i) => ({
+        ...p,
+        runtimeStatus: statuses[i].status,
+      }));
+    }),
+
+  getRuntimeStatus: authedProcedure
+    .input(z.object({ applicationId: z.string(), platform: z.string() }))
+    .query(async ({ input }) => {
+      return getBotRuntimeStatus(input.platform, input.applicationId);
     }),
 
   list: agentBotProviderProcedure
@@ -85,7 +101,16 @@ export const agentBotProviderRouter = router({
         .optional(),
     )
     .query(async ({ input, ctx }) => {
-      return ctx.agentBotProviderModel.query(input);
+      const providers = await ctx.agentBotProviderModel.query(input);
+
+      const statuses = await Promise.all(
+        providers.map((p) => getBotRuntimeStatus(p.platform, p.applicationId)),
+      );
+
+      return providers.map((p, i) => ({
+        ...p,
+        runtimeStatus: statuses[i].status,
+      }));
     }),
 
   connectBot: agentBotProviderProcedure
@@ -124,6 +149,7 @@ export const agentBotProviderRouter = router({
         provider.credentials,
         (provider.settings as Record<string, unknown>) || {},
         applicationId,
+        platform,
       );
 
       if (!result.valid) {
@@ -168,6 +194,16 @@ export const agentBotProviderRouter = router({
 
       // Invalidate cached bot so it reloads with fresh config on next webhook
       if (existing) {
+        const shouldStopRuntime =
+          value.enabled === false ||
+          (value.applicationId !== undefined && value.applicationId !== existing.applicationId) ||
+          (value.platform !== undefined && value.platform !== existing.platform);
+
+        if (shouldStopRuntime) {
+          const service = new GatewayService();
+          await service.stopClient(existing.platform, existing.applicationId);
+        }
+
         await getBotMessageRouter().invalidateBot(existing.platform, existing.applicationId);
       }
 

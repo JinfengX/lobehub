@@ -55,11 +55,13 @@ export default class GatewayConnectionCtr extends ControllerModule {
 
   @IpcMethod()
   async connect(): Promise<{ error?: string; success: boolean }> {
+    this.app.storeManager.set('gatewayEnabled', true);
     return this.service.connect();
   }
 
   @IpcMethod()
   async disconnect(): Promise<{ success: boolean }> {
+    this.app.storeManager.set('gatewayEnabled', false);
     return this.service.disconnect();
   }
 
@@ -70,16 +72,33 @@ export default class GatewayConnectionCtr extends ControllerModule {
 
   @IpcMethod()
   async getDeviceInfo(): Promise<{
+    description: string;
     deviceId: string;
     hostname: string;
+    name: string;
     platform: string;
   }> {
     return this.service.getDeviceInfo();
   }
 
+  @IpcMethod()
+  async setDeviceName(params: { name: string }): Promise<{ success: boolean }> {
+    this.service.setDeviceName(params.name);
+    return { success: true };
+  }
+
+  @IpcMethod()
+  async setDeviceDescription(params: { description: string }): Promise<{ success: boolean }> {
+    this.service.setDeviceDescription(params.description);
+    return { success: true };
+  }
+
   // ─── Auto Connect ───
 
   private async tryAutoConnect() {
+    const gatewayEnabled = this.app.storeManager.get('gatewayEnabled');
+    if (!gatewayEnabled) return;
+
     const isConfigured = await this.remoteServerConfigCtr.isRemoteServerConfigured();
     if (!isConfigured) return;
 
