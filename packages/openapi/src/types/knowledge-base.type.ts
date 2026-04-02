@@ -102,6 +102,18 @@ export const KnowledgeBaseIdParamSchema = z.object({
   id: z.string().min(1, '知识库 ID 不能为空'),
 });
 
+export interface DeleteKnowledgeBaseQuery {
+  /** Whether to delete exclusive files, chunks, vectors, and storage objects together */
+  removeFiles?: boolean;
+}
+
+export const DeleteKnowledgeBaseQuerySchema = z.object({
+  removeFiles: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+});
+
 /**
  * Create knowledge base request type
  */

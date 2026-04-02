@@ -218,7 +218,10 @@ export class KnowledgeBaseService extends BaseService {
   /**
    * Delete knowledge base
    */
-  async deleteKnowledgeBase(id: string): Promise<DeleteKnowledgeBaseResponse> {
+  async deleteKnowledgeBase(
+    id: string,
+    removeFiles: boolean = false,
+  ): Promise<DeleteKnowledgeBaseResponse> {
     try {
       // Permission check
       const permissionResult = await this.resolveOperationPermission('KNOWLEDGE_BASE_DELETE');
@@ -238,18 +241,21 @@ export class KnowledgeBaseService extends BaseService {
         throw this.createNotFoundError('Knowledge base not found or access denied');
       }
 
-      // Delete knowledge base and its exclusive files
-      const result = await this.knowledgeBaseModel.deleteWithFiles(id);
+      if (removeFiles) {
+        const result = await this.knowledgeBaseModel.deleteWithFiles(id);
 
-      // Clean up physical storage for deleted files
-      if (result.deletedFiles.length > 0) {
-        const fileService = new CoreFileService(this.db, this.userId);
-        const urls = result.deletedFiles
-          .map((f: { url: string | null }) => f.url)
-          .filter(Boolean) as string[];
-        if (urls.length > 0) {
-          await fileService.deleteFiles(urls);
+        if (result.deletedFiles.length > 0) {
+          const fileService = new CoreFileService(this.db, this.userId);
+          const urls = result.deletedFiles
+            .map((f: { url: string | null }) => f.url)
+            .filter(Boolean) as string[];
+
+          if (urls.length > 0) {
+            await fileService.deleteFiles(urls);
+          }
         }
+      } else {
+        await this.knowledgeBaseModel.delete(id);
       }
 
       this.log('info', 'Knowledge base deleted successfully', { id });

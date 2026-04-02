@@ -8,6 +8,7 @@ import { requireAnyPermission } from '../middleware';
 import { requireAuth } from '../middleware/auth';
 import {
   CreateKnowledgeBaseSchema,
+  DeleteKnowledgeBaseQuerySchema,
   KnowledgeBaseFileBatchSchema,
   KnowledgeBaseFileListQuerySchema,
   KnowledgeBaseIdParamSchema,
@@ -112,12 +113,16 @@ app.patch(
  *
  * Path parameters:
  * - id: string (required) - Knowledge base ID
+ *
+ * Query parameters:
+ * - removeFiles: boolean (optional) - When true, also delete exclusive files and derived data
  */
 app.delete(
   '/:id',
   requireAuth,
   requireAnyPermission(getAllScopePermissions('KNOWLEDGE_BASE_DELETE'), '您没有权限删除知识库'),
   zValidator('param', KnowledgeBaseIdParamSchema),
+  zValidator('query', DeleteKnowledgeBaseQuerySchema),
   async (c) => {
     const controller = new KnowledgeBaseController();
     return await controller.deleteKnowledgeBase(c);
