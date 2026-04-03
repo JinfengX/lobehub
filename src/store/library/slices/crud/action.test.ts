@@ -147,21 +147,7 @@ describe('KnowledgeBaseCrudAction', () => {
         await result.current.removeKnowledgeBase('kb-to-delete');
       });
 
-      expect(knowledgeBaseService.deleteKnowledgeBase).toHaveBeenCalledWith('kb-to-delete', false);
-      expect(refreshSpy).toHaveBeenCalled();
-    });
-
-    it('should allow explicitly deleting exclusive files together with the knowledge base', async () => {
-      vi.spyOn(knowledgeBaseService, 'deleteKnowledgeBase').mockResolvedValue(undefined as any);
-
-      const { result } = renderHook(() => useKnowledgeBaseStore());
-      const refreshSpy = vi.spyOn(result.current, 'refreshKnowledgeBaseList').mockResolvedValue();
-
-      await act(async () => {
-        await result.current.removeKnowledgeBase('kb-to-delete', true);
-      });
-
-      expect(knowledgeBaseService.deleteKnowledgeBase).toHaveBeenCalledWith('kb-to-delete', true);
+      expect(knowledgeBaseService.deleteKnowledgeBase).toHaveBeenCalledWith('kb-to-delete');
       expect(refreshSpy).toHaveBeenCalled();
     });
 

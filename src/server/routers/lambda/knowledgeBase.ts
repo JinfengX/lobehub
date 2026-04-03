@@ -88,26 +88,20 @@ export const knowledgeBaseRouter = router({
     }),
 
   removeKnowledgeBase: knowledgeBaseProcedure
-    .input(z.object({ id: z.string(), removeFiles: z.boolean().optional() }))
+    .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      if (input.removeFiles) {
-        const result = await ctx.knowledgeBaseModel.deleteWithFiles(
-          input.id,
-          serverDBEnv.REMOVE_GLOBAL_FILE,
-        );
+      const result = await ctx.knowledgeBaseModel.deleteWithFiles(
+        input.id,
+        serverDBEnv.REMOVE_GLOBAL_FILE,
+      );
 
-        if (result.deletedFiles.length > 0) {
-          const fileService = new FileService(ctx.serverDB, ctx.userId);
-          const urls = result.deletedFiles.map((f) => f.url).filter(Boolean) as string[];
-          if (urls.length > 0) {
-            await fileService.deleteFiles(urls);
-          }
+      if (result.deletedFiles.length > 0) {
+        const fileService = new FileService(ctx.serverDB, ctx.userId);
+        const urls = result.deletedFiles.map((f) => f.url).filter(Boolean) as string[];
+        if (urls.length > 0) {
+          await fileService.deleteFiles(urls);
         }
-
-        return;
       }
-
-      return ctx.knowledgeBaseModel.delete(input.id);
     }),
 
   updateKnowledgeBase: knowledgeBaseProcedure

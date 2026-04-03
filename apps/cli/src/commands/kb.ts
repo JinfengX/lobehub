@@ -193,9 +193,8 @@ export function registerKbCommand(program: Command) {
 
   kb.command('delete <id>')
     .description('Delete a knowledge base')
-    .option('--remove-files', 'Also delete associated files')
     .option('--yes', 'Skip confirmation prompt')
-    .action(async (id: string, options: { removeFiles?: boolean; yes?: boolean }) => {
+    .action(async (id: string, options: { yes?: boolean }) => {
       if (!options.yes) {
         const confirmed = await confirm('Are you sure you want to delete this knowledge base?');
         if (!confirmed) {
@@ -205,10 +204,7 @@ export function registerKbCommand(program: Command) {
       }
 
       const client = await getTrpcClient();
-      await client.knowledgeBase.removeKnowledgeBase.mutate({
-        id,
-        removeFiles: options.removeFiles,
-      });
+      await client.knowledgeBase.removeKnowledgeBase.mutate({ id });
       console.log(`${pc.green('✓')} Deleted knowledge base ${pc.bold(id)}`);
     });
 

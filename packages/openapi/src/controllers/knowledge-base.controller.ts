@@ -5,7 +5,6 @@ import { FileUploadService } from '../services/file.service';
 import { KnowledgeBaseService } from '../services/knowledge-base.service';
 import type {
   CreateKnowledgeBaseRequest,
-  DeleteKnowledgeBaseQuery,
   KnowledgeBaseFileBatchRequest,
   KnowledgeBaseFileListQuery,
   KnowledgeBaseListQuery,
@@ -191,12 +190,11 @@ export class KnowledgeBaseController extends BaseController {
     try {
       const userId = this.getUserId(c)!;
       const { id } = this.getParams(c);
-      const query = this.getQuery<DeleteKnowledgeBaseQuery>(c);
 
       const db = await this.getDatabase();
       const knowledgeBaseService = new KnowledgeBaseService(db, userId);
 
-      const result = await knowledgeBaseService.deleteKnowledgeBase(id, query.removeFiles);
+      const result = await knowledgeBaseService.deleteKnowledgeBase(id);
 
       return this.success(c, result, 'Knowledge base deleted successfully');
     } catch (error) {

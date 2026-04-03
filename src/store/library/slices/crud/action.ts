@@ -47,8 +47,8 @@ export class KnowledgeBaseCrudActionImpl {
     await mutate(FETCH_KNOWLEDGE_BASE_LIST_KEY);
   };
 
-  removeKnowledgeBase = async (id: string, removeFiles: boolean = false): Promise<void> => {
-    await knowledgeBaseService.deleteKnowledgeBase(id, removeFiles);
+  removeKnowledgeBase = async (id: string): Promise<void> => {
+    await knowledgeBaseService.deleteKnowledgeBase(id);
     await this.#get().refreshKnowledgeBaseList();
   };
 
