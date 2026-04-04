@@ -71,6 +71,7 @@ export interface TaskDetailActivity {
   time?: string;
   title?: string;
   type: 'brief' | 'comment' | 'topic';
+  userId?: string | null;
 }
 
 export interface TaskDetailData {

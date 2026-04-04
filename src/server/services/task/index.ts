@@ -115,6 +115,7 @@ export class TaskService {
         content: c.content,
         time: toISO(c.createdAt),
         type: 'comment' as const,
+        userId: c.authorUserId,
       })),
     ].sort((a, b) => {
       if (!a.time) return 1;
