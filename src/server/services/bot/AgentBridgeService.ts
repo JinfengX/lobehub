@@ -5,12 +5,14 @@ import { emoji } from 'chat';
 import debug from 'debug';
 import urlJoin from 'url-join';
 
+import { AgentBotProviderModel } from '@/database/models/agentBotProvider';
 import { TopicModel } from '@/database/models/topic';
 import { UserModel } from '@/database/models/user';
 import type { LobeChatDatabase } from '@/database/type';
 import { appEnv } from '@/envs/app';
 import { createAbortError, isAbortError } from '@/server/services/agentRuntime/abort';
 import { AiAgentService } from '@/server/services/aiAgent';
+import { getMessageGatewayClient } from '@/server/services/gateway/MessageGatewayClient';
 import { isQueueAgentRuntimeEnabled } from '@/server/services/queue/impls';
 import { SystemAgentService } from '@/server/services/systemAgent';
 
@@ -468,13 +470,41 @@ export class AgentBridgeService {
     const aiAgentService = new AiAgentService(this.db, this.userId);
     const timezone = await this.loadTimezone();
 
-    await thread.startTyping();
+    // When the message-gateway is configured, skip the ack/progress message and
+    // rely on the gateway's alarm-based typing indicator throughout AI generation.
+    // Posting an ack message cancels platform-level typing (e.g. Discord), and the
+    // gateway typing makes ack redundant as user feedback.
+    const gwClient = getMessageGatewayClient();
+    const useGatewayTyping = gwClient.isConfigured;
 
     let progressMessage: SentMessage | undefined;
-    try {
-      progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
-    } catch (error) {
-      log('executeWithWebhooks: failed to post initial placeholder message: %O', error);
+    if (useGatewayTyping) {
+      log('executeWithWebhooks: using gateway typing, skipping ack message');
+
+      // Platform typing (best-effort, must not block AI generation)
+      thread.startTyping().catch(() => {});
+
+      // Start gateway typing immediately so the alarm keeps it alive through
+      // the entire AI generation (platform typing expires after ~10s).
+      if (botContext?.platformThreadId && botContext?.applicationId) {
+        const platform = botContext.platformThreadId.split(':')[0];
+        AgentBotProviderModel.findByPlatformAndAppId(this.db, platform, botContext.applicationId)
+          .then((row) => {
+            if (row?.id) {
+              return gwClient.startTyping(row.id, botContext.platformThreadId!);
+            }
+          })
+          .catch((err) => {
+            log('executeWithWebhooks: gateway startTyping failed: %O', err);
+          });
+      }
+    } else {
+      await thread.startTyping();
+      try {
+        progressMessage = await thread.post(renderStart(userMessage.text, { timezone }));
+      } catch (error) {
+        log('executeWithWebhooks: failed to post initial placeholder message: %O', error);
+      }
     }
 
     const progressMessageId: string | undefined = progressMessage?.id;
