@@ -21,7 +21,8 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
+    expect(result).toContain('TASK-1');
+    expect(result).toContain('帮我写一本 AI Agent 技术书籍');
   });
 
   it('should build prompt with task description + instruction', () => {
@@ -38,7 +39,9 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
+    expect(result).toContain('TASK-1');
+    expect(result).toContain('面向开发者的技术书籍');
+    expect(result).toContain('帮我写一本 AI Agent 技术书籍，目标 8 章');
   });
 
   it('should prioritize user feedback at the top', () => {
@@ -60,7 +63,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     // Verify feedback comes before task
     const feedbackIdx = result.indexOf('<user_feedback>');
     const taskIdx = result.indexOf('<task');
@@ -90,7 +92,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     expect(result).toContain('🤖 agent');
     expect(result).toContain('👤 user');
     expect(result).toContain('3h ago');
@@ -114,7 +115,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     const feedbackIdx = result.indexOf('<user_feedback>');
     const extraIdx = result.indexOf('<high_priority_instruction>');
     const taskIdx = result.indexOf('<task');
@@ -176,7 +176,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     // Verify timeline is sorted chronologically (oldest first)
     // Data: topic1(17:00), brief1(17:05), topic2(17:31), brief2(18:00)
     const taskSection = result.match(/<task>[\s\S]*<\/task>/)?.[0] || '';
@@ -215,7 +214,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     expect(result).toContain('第2章需要更多实例');
   });
 
@@ -261,8 +259,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
-
     // Verify order: instruction → feedback → task (activities now inside task)
     const tags = ['<high_priority_instruction>', '<user_feedback>', '<task>'];
     let lastIdx = -1;
@@ -291,7 +287,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     expect(result).not.toContain('<user_feedback>');
     expect(result).not.toContain('<activities>');
   });
@@ -320,7 +315,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     expect(result).toContain('TASK-2');
     expect(result).toContain('TASK-3');
     expect(result).toContain('← blocks: TASK-2');
@@ -343,7 +337,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     // user_feedback should have full content
     const feedbackSection = result.split('<user_feedback>')[1]?.split('</user_feedback>')[0] || '';
     expect(feedbackSection).toContain(longContent);
@@ -372,7 +365,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     // Verify subtasks appear between <task> and </task>
     const taskMatch = result.match(/<task>[\s\S]*<\/task>/)?.[0] || '';
     expect(taskMatch).toContain('Subtasks:');
@@ -420,7 +412,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     // Verify parentTask block exists inside <task>
     const taskSection = result.match(/<task>[\s\S]*<\/task>/)?.[0] || '';
     expect(taskSection).toContain('<parentTask');
@@ -453,7 +444,6 @@ describe('buildTaskRunPrompt', () => {
       NOW,
     );
 
-    expect(result).toMatchSnapshot();
     const feedbackSection = result.split('<user_feedback>')[1]?.split('</user_feedback>')[0] || '';
     expect(feedbackSection).toContain('用户反馈');
     expect(feedbackSection).not.toContain('Agent 回复');

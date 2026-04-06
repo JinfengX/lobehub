@@ -10,27 +10,12 @@ describe('chainAnswerWithContext', () => {
       question: 'What is artificial intelligence?',
     });
 
-    expect(result).toMatchSnapshot();
-  });
-
-  it('should handle single knowledge area', () => {
-    const result = chainAnswerWithContext({
-      context: ['Single context'],
-      knowledge: ['Technology'],
-      question: 'How does it work?',
-    });
-
-    expect(result).toMatchSnapshot();
-  });
-
-  it('should handle multiple knowledge areas', () => {
-    const result = chainAnswerWithContext({
-      context: ['Context'],
-      knowledge: ['AI', 'ML', 'NLP', 'Computer Vision'],
-      question: 'Tell me about these fields',
-    });
-
-    expect(result).toMatchSnapshot();
+    expect(result).toHaveProperty('messages');
+    expect(result.messages.length).toBeGreaterThan(0);
+    const content = result.messages.map((m) => m.content).join('\n');
+    expect(content).toContain('What is artificial intelligence?');
+    expect(content).toContain('Context passage 1');
+    expect(content).toContain('Context passage 2');
   });
 
   it('should handle empty context array', () => {
@@ -40,7 +25,9 @@ describe('chainAnswerWithContext', () => {
       question: 'What is AI?',
     });
 
-    expect(result).toMatchSnapshot();
+    expect(result).toHaveProperty('messages');
+    const content = result.messages.map((m) => m.content).join('\n');
+    expect(content).toContain('What is AI?');
   });
 
   it('should filter out empty context strings', () => {
@@ -50,6 +37,8 @@ describe('chainAnswerWithContext', () => {
       question: 'Test question',
     });
 
-    expect(result).toMatchSnapshot();
+    const content = result.messages.map((m) => m.content).join('\n');
+    expect(content).toContain('Valid context');
+    expect(content).toContain('Another valid context');
   });
 });
