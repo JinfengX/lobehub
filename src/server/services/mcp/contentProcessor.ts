@@ -33,7 +33,9 @@ export const processContentBlocks = async (
       const pathname = `${fileEnv.NEXT_PUBLIC_S3_FILE_PATH}/mcp/images/${today}/${nanoid()}.${fileExtension}`;
 
       // Upload base64 image and get proxy URL
-      const { url } = await fileService.uploadBase64(imageBlock.data, pathname);
+      const { url } = await fileService.uploadBase64(imageBlock.data, pathname, {
+        fileType: imageBlock.mimeType,
+      });
 
       log(`Image uploaded, proxy URL: ${url}`);
 
@@ -49,8 +51,11 @@ export const processContentBlocks = async (
       // Generate unique pathname with date-based sharding
       const pathname = `${fileEnv.NEXT_PUBLIC_S3_FILE_PATH}/mcp/audio/${today}/${nanoid()}.${fileExtension}`;
 
-      // Upload base64 audio and get proxy URL
-      const { url } = await fileService.uploadBase64(audioBlock.data, pathname);
+      // Upload base64 audio and get proxy URL — pass mimeType directly since
+      // inferContentTypeFromImageUrl only supports image extensions
+      const { url } = await fileService.uploadBase64(audioBlock.data, pathname, {
+        fileType: audioBlock.mimeType,
+      });
 
       log(`Audio uploaded, proxy URL: ${url}`);
 
