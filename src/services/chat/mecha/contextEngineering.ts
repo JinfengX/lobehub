@@ -1,3 +1,4 @@
+import { LobeHubIdentifier } from '@lobechat/builtin-skills';
 import { LobeActivatorIdentifier } from '@lobechat/builtin-tool-activator';
 import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
 import { AgentManagementIdentifier } from '@lobechat/builtin-tool-agent-management';
@@ -10,6 +11,7 @@ import type {
   AgentBuilderContext,
   AgentContextDocument,
   AgentGroupConfig,
+  AgentIdentityContext,
   AgentManagementContext,
   GroupAgentBuilderContext,
   GroupOfficialToolItem,
@@ -557,6 +559,32 @@ export const contextEngineering = async ({
     log('mentionedAgents injected: %d agents', initialContext!.mentionedAgents!.length);
   }
 
+  // Build agent identity context when the LobeHub builtin skill is mounted on
+  // the agent. The skill exposes the `lh` CLI which operates on platform
+  // resources (agents/topics/files/etc), so the model needs to know its own id
+  // and current topic up front instead of having to search for itself.
+  let agentIdentityContext: AgentIdentityContext | undefined;
+  const isLobeHubSkillMounted = plugins?.includes(LobeHubIdentifier) ?? false;
+
+  if (isLobeHubSkillMounted && agentId) {
+    const agentMeta = agentSelectors.getAgentMetaById(agentId)(agentStoreState);
+    const agentConfig = agentSelectors.getAgentConfigById(agentId)(agentStoreState);
+    const topic = topicId ? topicSelectors.getTopicById(topicId)(getChatStoreState()) : undefined;
+
+    agentIdentityContext = {
+      agent: {
+        description: agentMeta?.description ?? undefined,
+        id: agentId,
+        model: agentConfig?.model,
+        provider: agentConfig?.provider,
+        systemRole: agentConfig?.systemRole ?? undefined,
+        title: agentMeta?.title ?? undefined,
+      },
+      topic: topic ? { id: topic.id, title: topic.title ?? undefined } : undefined,
+    };
+    log('agentIdentityContext built for agent: %s, topic: %s', agentId, topicId ?? 'none');
+  }
+
   // Resolve topic references from messages containing <refer_topic> tags
   const topicReferences = await resolveTopicReferences(
     messages,
@@ -683,6 +711,7 @@ export const contextEngineering = async ({
 
     // Extended contexts - only pass when enabled
     ...(isAgentBuilderEnabled && { agentBuilderContext }),
+    ...(agentIdentityContext && { agentIdentityContext }),
     ...(isGroupAgentBuilderEnabled && { groupAgentBuilderContext }),
     ...(agentManagementContext && { agentManagementContext }),
     ...(agentGroup && { agentGroup }),

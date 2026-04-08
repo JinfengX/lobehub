@@ -12,6 +12,7 @@ import type { OpenAIChatMessage, UIChatMessage } from '@/types/index';
 import type { AgentInfo } from '../../processors/GroupRoleTransform';
 import type { AgentBuilderContext } from '../../providers/AgentBuilderContextInjector';
 import type { AgentContextDocument } from '../../providers/AgentDocumentInjector';
+import type { AgentIdentityContext } from '../../providers/AgentIdentityContextInjector';
 import type { AgentManagementContext } from '../../providers/AgentManagementContextInjector';
 import type { BotPlatformContext } from '../../providers/BotPlatformContextInjector';
 import type { DiscordContext } from '../../providers/DiscordContextProvider';
@@ -271,6 +272,13 @@ export interface MessagesEngineParams {
   // ========== Extended contexts (both frontend and backend) ==========
   /** Agent Builder context */
   agentBuilderContext?: AgentBuilderContext;
+  /**
+   * Current agent identity context — injected when the agent operates tools
+   * that act on platform resources (e.g. the LobeHub builtin skill / `lh` CLI),
+   * so the model knows its own id, title, model, and current topic without
+   * having to search.
+   */
+  agentIdentityContext?: AgentIdentityContext;
   /** Bot platform context for injecting platform capabilities (e.g. markdown support) */
   botPlatformContext?: BotPlatformContext;
   /** Discord context for injecting channel/guild info into system injection message */
@@ -339,6 +347,7 @@ export interface MessagesEngineResult {
 
 export { type AgentInfo } from '../../processors/GroupRoleTransform';
 export { type AgentBuilderContext } from '../../providers/AgentBuilderContextInjector';
+export { type AgentIdentityContext } from '../../providers/AgentIdentityContextInjector';
 export { type AgentManagementContext } from '../../providers/AgentManagementContextInjector';
 export { type BotPlatformContext } from '../../providers/BotPlatformContextInjector';
 export { type DiscordContext } from '../../providers/DiscordContextProvider';

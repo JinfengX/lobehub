@@ -28,6 +28,7 @@ import {
   AgentDocumentMessageInjector,
   AgentDocumentSystemAppendInjector,
   AgentDocumentSystemReplaceInjector,
+  AgentIdentityContextInjector,
   AgentManagementContextInjector,
   BotPlatformContextInjector,
   DiscordContextProvider,
@@ -150,6 +151,7 @@ export class MessagesEngine {
       fileContext,
       messages,
       agentBuilderContext,
+      agentIdentityContext,
       botPlatformContext,
       discordContext,
       evalContext,
@@ -295,6 +297,13 @@ export class MessagesEngine {
       new AgentManagementContextInjector({
         enabled: isAgentManagementEnabled,
         context: agentManagementContext,
+      }),
+      // Agent Identity context (current agent id/title/model + topic) — injected
+      // when the agent uses tools that act on platform resources (e.g. LobeHub
+      // builtin skill / `lh` CLI), so the model knows "who am I" without searching.
+      new AgentIdentityContextInjector({
+        enabled: !!agentIdentityContext,
+        context: agentIdentityContext,
       }),
       // Group Agent Builder context (current group config/members for editing)
       new GroupAgentBuilderContextInjector({
