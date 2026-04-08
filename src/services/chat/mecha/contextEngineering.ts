@@ -571,13 +571,14 @@ export const contextEngineering = async ({
     const agentConfig = agentSelectors.getAgentConfigById(agentId)(agentStoreState);
     const topic = topicId ? topicSelectors.getTopicById(topicId)(getChatStoreState()) : undefined;
 
+    // NOTE: deliberately NOT including systemRole here — it's already injected
+    // as the system message by SystemRoleInjector (Phase 2 in MessagesEngine).
     agentIdentityContext = {
       agent: {
         description: agentMeta?.description ?? undefined,
         id: agentId,
         model: agentConfig?.model,
         provider: agentConfig?.provider,
-        systemRole: agentConfig?.systemRole ?? undefined,
         title: agentMeta?.title ?? undefined,
       },
       topic: topic ? { id: topic.id, title: topic.title ?? undefined } : undefined,

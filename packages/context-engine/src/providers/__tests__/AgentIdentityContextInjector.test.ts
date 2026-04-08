@@ -58,7 +58,6 @@ describe('AgentIdentityContextInjector', () => {
             id: 'agt_123',
             model: 'gpt-4',
             provider: 'openai',
-            systemRole: 'You are a helpful test agent.',
             title: 'Test Agent',
           },
           topic: { id: 'tpc_456', title: 'Hello topic' },
@@ -82,7 +81,8 @@ describe('AgentIdentityContextInjector', () => {
       expect(injected).toContain('<description>A test assistant</description>');
       expect(injected).toContain('provider="openai"');
       expect(injected).toContain('gpt-4');
-      expect(injected).toContain('You are a helpful test agent.');
+      // systemRole is intentionally NOT included — it's already in the system message
+      expect(injected).not.toContain('<systemRole');
       expect(injected).toContain('<current_topic>');
       expect(injected).toContain('<id>tpc_456</id>');
       expect(injected).toContain('<title>Hello topic</title>');
@@ -109,22 +109,6 @@ describe('AgentIdentityContextInjector', () => {
       expect(injected).toContain('<id>agt_only</id>');
       expect(injected).toContain('<title>Solo</title>');
       expect(injected).not.toContain('<current_topic>');
-    });
-
-    it('should truncate long systemRole to 500 chars + ellipsis', async () => {
-      const longRole = 'x'.repeat(800);
-      const injector = new AgentIdentityContextInjector({
-        enabled: true,
-        context: { agent: { id: 'agt_x', systemRole: longRole } },
-      });
-      const ctx = createContext([{ role: 'user', content: 'hi' }]);
-      const result = await injector.process(ctx);
-
-      const injected = result.messages[0].content as string;
-      expect(injected).toContain('length="800"');
-      // Truncated content: 500 chars of x + '...'
-      expect(injected).toContain('x'.repeat(500) + '...');
-      expect(injected).not.toContain('x'.repeat(501));
     });
 
     it('should escape XML-unsafe characters', async () => {

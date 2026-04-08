@@ -12,8 +12,6 @@ declare module '../types' {
 
 const log = debug('context-engine:provider:AgentIdentityContextInjector');
 
-const SYSTEM_ROLE_PREVIEW_LIMIT = 500;
-
 /**
  * Current agent identity info.
  *
@@ -21,14 +19,17 @@ const SYSTEM_ROLE_PREVIEW_LIMIT = 500;
  * platform resources (e.g. the `lh` CLI from the LobeHub builtin skill).
  * Without this, the model would have to search for itself before issuing
  * agent/topic-scoped commands.
+ *
+ * NOTE: deliberately does NOT include `systemRole` — the agent's full
+ * systemRole is already injected as the system message by `SystemRoleInjector`
+ * (Phase 2). Re-emitting it here would just waste tokens and risk drift
+ * between two copies.
  */
 export interface AgentIdentityInfo {
   description?: string;
   id: string;
   model?: string;
   provider?: string;
-  /** Truncated to ~500 chars when rendered. */
-  systemRole?: string;
   title?: string;
 }
 
@@ -67,15 +68,6 @@ const formatIdentityContext = (context: AgentIdentityContext): string => {
     const providerAttr = agent.provider ? ` provider="${escapeXml(agent.provider)}"` : '';
     agentFields.push(`  <model${providerAttr}>${escapeXml(agent.model)}</model>`);
   }
-  if (agent.systemRole) {
-    const preview =
-      agent.systemRole.length > SYSTEM_ROLE_PREVIEW_LIMIT
-        ? agent.systemRole.slice(0, SYSTEM_ROLE_PREVIEW_LIMIT) + '...'
-        : agent.systemRole;
-    agentFields.push(
-      `  <systemRole length="${agent.systemRole.length}">${escapeXml(preview)}</systemRole>`,
-    );
-  }
 
   const parts: string[] = [`<agent>\n${agentFields.join('\n')}\n</agent>`];
 
@@ -94,11 +86,10 @@ ${parts.join('\n')}
 /**
  * Agent Identity Context Injector
  *
- * Injects the current agent's identity (id / title / description / model /
- * systemRole preview) and the current topic info before the first user
- * message. Caller decides when to enable this — typically when the LobeHub
- * builtin skill (or any other tool that operates on platform resources) is
- * mounted on the agent.
+ * Injects the current agent's identity (id / title / description / model)
+ * and the current topic info before the first user message. Caller decides
+ * when to enable this — typically when the LobeHub builtin skill (or any
+ * other tool that operates on platform resources) is mounted on the agent.
  */
 export class AgentIdentityContextInjector extends BaseFirstUserContentProvider {
   readonly name = 'AgentIdentityContextInjector';
