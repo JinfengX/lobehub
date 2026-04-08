@@ -250,6 +250,56 @@ export class GatewayActionImpl {
     return result;
   };
 
+  /**
+   * Reconnect to an existing Gateway operation after page reload.
+   * Reads runningOperation from topic metadata, refreshes the JWT token,
+   * and establishes a new WebSocket connection with event replay.
+   */
+  reconnectToGatewayOperation = async (params: {
+    assistantMessageId: string;
+    operationId: string;
+    topicId: string;
+  }): Promise<void> => {
+    const { assistantMessageId, operationId, topicId } = params;
+
+    if (!this.isGatewayModeEnabled()) return;
+
+    const agentGatewayUrl =
+      window.global_serverConfigStore!.getState().serverConfig.agentGatewayUrl!;
+
+    // Get a fresh JWT token (original expired after 5 min)
+    const { token } = await aiAgentService.refreshGatewayToken();
+
+    const agentId = this.#get().activeAgentId;
+    const context = { agentId, topicId, scope: 'main' as const, threadId: null };
+
+    // Create a local operation for UI loading state
+    const { operationId: gatewayOpId } = this.#get().startOperation({
+      context,
+      type: 'execServerAgentRuntime',
+    });
+
+    this.#get().associateMessageWithOperation(assistantMessageId, gatewayOpId);
+
+    const eventHandler = createGatewayEventHandler(this.#get, {
+      assistantMessageId,
+      context,
+      operationId: gatewayOpId,
+    });
+
+    this.#get().connectToGateway({
+      gatewayUrl: agentGatewayUrl,
+      onEvent: eventHandler,
+      onSessionComplete: () => {
+        this.#get().completeOperation(gatewayOpId);
+        this.#get().internal_updateTopicLoading(topicId, false);
+        topicService.updateTopicMetadata(topicId, { runningOperation: null }).catch(() => {});
+      },
+      operationId,
+      token,
+    });
+  };
+
   private internal_cleanupGatewayConnection = (operationId: string): void => {
     this.#set(
       (state) => {
