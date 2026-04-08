@@ -16,14 +16,151 @@ import { AiAgentService } from '@/server/services/aiAgent';
 import { TaskService } from '@/server/services/task';
 import { TaskLifecycleService } from '@/server/services/taskLifecycle';
 import { TaskReviewService } from '@/server/services/taskReview';
+import {
+  createTaskSchedulerModule,
+  LocalTaskScheduler,
+  type TaskSchedulerImpl,
+} from '@/server/services/taskScheduler';
+
+/**
+ * Shared task scheduler — wired once with a self-scheduling callback.
+ * LocalTaskScheduler uses setTimeout, QStash uses delayed jobs.
+ */
+let taskSchedulerInstance: TaskSchedulerImpl | undefined;
+
+function getTaskScheduler(): TaskSchedulerImpl {
+  if (!taskSchedulerInstance) {
+    const scheduler = createTaskSchedulerModule();
+
+    // Wire LocalTaskScheduler callback: when scheduleNextTopic fires,
+    // execute the next topic for the task
+    if (scheduler instanceof LocalTaskScheduler) {
+      scheduler.setExecutionCallback(async (taskId: string, userId: string) => {
+        try {
+          await executeTaskTopic(taskId, userId);
+        } catch (error) {
+          console.error('[task-scheduler] Failed to execute next topic:', error);
+        }
+      });
+    }
+
+    taskSchedulerInstance = scheduler;
+  }
+  return taskSchedulerInstance;
+}
+
+/**
+ * Core task topic execution — shared by tRPC `task.run` and scheduler callback.
+ * Creates a new topic for the given task and triggers agent execution.
+ */
+async function executeTaskTopic(
+  taskId: string,
+  userId: string,
+  options?: { extraPrompt?: string },
+): Promise<{ operationId: string; topicId?: string }> {
+  const { getServerDB } = await import('@/database/server');
+  const db = await getServerDB();
+
+  const taskModel = new TaskModel(db, userId);
+  const taskTopicModel = new TaskTopicModel(db, userId);
+  const briefModel = new BriefModel(db, userId);
+  const scheduler = getTaskScheduler();
+  const taskLifecycle = new TaskLifecycleService(db, userId, scheduler);
+
+  const task = await taskModel.findById(taskId);
+  if (!task) throw new Error(`Task ${taskId} not found`);
+  if (!task.assigneeAgentId) throw new Error(`Task ${taskId} has no assigned agent`);
+
+  // Build prompt with handoff context
+  const prompt = await buildTaskPrompt(
+    task,
+    { briefModel, taskModel, taskTopicModel },
+    options?.extraPrompt,
+  );
+
+  // Ensure running status
+  if (task.status !== 'running') {
+    await taskModel.updateStatus(task.id, 'running', { error: null, startedAt: new Date() });
+  }
+
+  const agentRef = task.assigneeAgentId;
+  const isSlug = !agentRef.startsWith('agt_');
+  const taskIdentifier = task.identifier;
+
+  const checkpoint = taskModel.getCheckpointConfig(task);
+  const reviewConfig = taskModel.getReviewConfig(task);
+  const pluginIds = [TaskSkillIdentifier, NotebookIdentifier];
+  if (!reviewConfig?.enabled && checkpoint.onAgentRequest !== false) {
+    pluginIds.push(BriefIdentifier);
+  }
+
+  const taskConfig = (task.config ?? {}) as Record<string, unknown>;
+  const aiAgentService = new AiAgentService(db, userId);
+
+  const result = await aiAgentService.execAgent({
+    ...(isSlug ? { slug: agentRef } : { agentId: agentRef }),
+    additionalPluginIds: pluginIds,
+    ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
+    ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
+    hooks: [
+      {
+        handler: async () => {
+          await taskModel.updateHeartbeat(taskId);
+        },
+        id: 'task-heartbeat',
+        type: 'afterStep' as const,
+      },
+      {
+        handler: async (event) => {
+          await taskLifecycle.onTopicComplete({
+            errorMessage: event.errorMessage,
+            lastAssistantContent: event.lastAssistantContent,
+            operationId: event.operationId,
+            reason: event.reason || 'done',
+            taskId,
+            taskIdentifier,
+            topicId: event.topicId,
+          });
+        },
+        id: 'task-on-complete',
+        type: 'onComplete' as const,
+        webhook: {
+          body: { taskId, userId },
+          url: '/api/workflows/task/on-topic-complete',
+        },
+      },
+    ],
+    prompt,
+    taskId: task.id,
+    title: task.name || task.identifier,
+    trigger: 'task',
+    userInterventionConfig: { approvalMode: 'headless' },
+  });
+
+  // Track topic
+  if (result.topicId) {
+    await taskModel.incrementTopicCount(task.id);
+    await taskModel.updateCurrentTopic(task.id, result.topicId);
+    await taskTopicModel.add(task.id, result.topicId, {
+      operationId: result.operationId,
+      seq: (task.totalTopics || 0) + 1,
+    });
+  }
+
+  await taskModel.updateHeartbeat(task.id);
+
+  return { operationId: result.operationId, topicId: result.topicId };
+}
 
 const taskProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const scheduler = getTaskScheduler();
   return opts.next({
     ctx: {
       briefModel: new BriefModel(ctx.serverDB, ctx.userId),
-      taskLifecycle: new TaskLifecycleService(ctx.serverDB, ctx.userId),
+      taskLifecycle: new TaskLifecycleService(ctx.serverDB, ctx.userId, scheduler),
       taskModel: new TaskModel(ctx.serverDB, ctx.userId),
+      taskScheduler: scheduler,
       taskService: new TaskService(ctx.serverDB, ctx.userId),
       taskTopicModel: new TaskTopicModel(ctx.serverDB, ctx.userId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId),
@@ -759,7 +896,6 @@ export const taskRouter = router({
         const existingTopics = await ctx.taskTopicModel.findByTaskId(task.id);
 
         if (continueTopicId) {
-          // If continuing a topic that's already running, reject
           const target = existingTopics.find((t) => t.topicId === continueTopicId);
           if (target?.status === 'running') {
             throw new TRPCError({
@@ -768,7 +904,6 @@ export const taskRouter = router({
             });
           }
         } else {
-          // If there's already a running topic, reject creating a new one
           const runningTopic = existingTopics.find((t) => t.status === 'running');
           if (runningTopic) {
             throw new TRPCError({
@@ -786,106 +921,82 @@ export const taskRouter = router({
           }
         }
 
-        // Build prompt with handoff context from previous topics
-        const prompt = await buildTaskPrompt(task, ctx, extraPrompt);
-
-        // Update task status to running if not already, clear previous error
-        if (task.status !== 'running') {
-          await model.updateStatus(task.id, 'running', { error: null, startedAt: new Date() });
-        } else if (task.error) {
-          await model.update(task.id, { error: null });
-        }
-
-        // Call AiAgentService.execAgent
-        // assigneeAgentId can be either a raw agentId (agt_xxx) or a slug (inbox)
-        const agentRef = task.assigneeAgentId!;
-        const isSlug = !agentRef.startsWith('agt_');
-
-        const aiAgentService = new AiAgentService(ctx.serverDB, ctx.userId);
-        const taskId = task.id;
-        const taskIdentifier = task.identifier;
-        const { taskLifecycle } = ctx;
-        const db = ctx.serverDB;
-        const userId = ctx.userId;
-
-        // Task execution always injects: Task skill (auto-activated) + Notebook tool (for document output)
-        // Conditionally inject Brief tool based on checkpoint/review config
-        const checkpoint = model.getCheckpointConfig(task);
-        const reviewConfig = model.getReviewConfig(task);
-        const pluginIds = [TaskSkillIdentifier, NotebookIdentifier];
-        if (!reviewConfig?.enabled && checkpoint.onAgentRequest !== false) {
-          pluginIds.push(BriefIdentifier);
-        }
-
-        // Read per-task model/provider overrides from task.config
-        const taskConfig = (task.config ?? {}) as Record<string, unknown>;
-
-        const result = await aiAgentService.execAgent({
-          ...(isSlug ? { slug: agentRef } : { agentId: agentRef }),
-          additionalPluginIds: pluginIds,
-          ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
-          ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
-          hooks: [
-            {
-              handler: async () => {
-                await model.updateHeartbeat(taskId);
-              },
-              id: 'task-heartbeat',
-              type: 'afterStep' as const,
-            },
-            {
-              handler: async (event) => {
-                await taskLifecycle.onTopicComplete({
-                  errorMessage: event.errorMessage,
-                  lastAssistantContent: event.lastAssistantContent,
-                  operationId: event.operationId,
-                  reason: event.reason || 'done',
-                  taskId,
-                  taskIdentifier,
-                  topicId: event.topicId,
-                });
-              },
-              id: 'task-on-complete',
-              type: 'onComplete' as const,
-              webhook: {
-                body: { taskId, userId },
-                url: '/api/workflows/task/on-topic-complete',
-              },
-            },
-          ],
-          prompt,
-          taskId: task.id,
-          title: extraPrompt ? extraPrompt.slice(0, 100) : task.name || task.identifier,
-          trigger: 'task',
-          userInterventionConfig: { approvalMode: 'headless' },
-          // Continue on existing topic if specified
-          ...(continueTopicId && { appContext: { topicId: continueTopicId } }),
-        });
-
-        // Update task topic count, current topic, and association
-        if (result.topicId) {
-          if (continueTopicId) {
-            // Continuing existing topic — update status and operationId
-            await ctx.taskTopicModel.updateStatus(task.id, continueTopicId, 'running');
-            await ctx.taskTopicModel.updateOperationId(
-              task.id,
-              continueTopicId,
-              result.operationId,
-            );
-            await model.updateCurrentTopic(task.id, continueTopicId);
-          } else {
-            // New topic
-            await model.incrementTopicCount(task.id);
-            await model.updateCurrentTopic(task.id, result.topicId);
-            await ctx.taskTopicModel.add(task.id, result.topicId, {
-              operationId: result.operationId,
-              seq: (task.totalTopics || 0) + 1,
-            });
+        // For continue-topic mode, handle it directly; otherwise delegate to shared function
+        if (continueTopicId) {
+          const prompt = await buildTaskPrompt(task, ctx, extraPrompt);
+          if (task.status !== 'running') {
+            await model.updateStatus(task.id, 'running', { error: null, startedAt: new Date() });
           }
+
+          const agentRef = task.assigneeAgentId!;
+          const isSlug = !agentRef.startsWith('agt_');
+          const aiAgentService = new AiAgentService(ctx.serverDB, ctx.userId);
+
+          const checkpoint = model.getCheckpointConfig(task);
+          const reviewConfig = model.getReviewConfig(task);
+          const pluginIds = [TaskSkillIdentifier, NotebookIdentifier];
+          if (!reviewConfig?.enabled && checkpoint.onAgentRequest !== false) {
+            pluginIds.push(BriefIdentifier);
+          }
+
+          const taskConfig = (task.config ?? {}) as Record<string, unknown>;
+          const taskId = task.id;
+          const taskIdentifier = task.identifier;
+          const { taskLifecycle } = ctx;
+
+          const result = await aiAgentService.execAgent({
+            ...(isSlug ? { slug: agentRef } : { agentId: agentRef }),
+            additionalPluginIds: pluginIds,
+            ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
+            ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
+            appContext: { topicId: continueTopicId },
+            hooks: [
+              {
+                handler: async () => {
+                  await model.updateHeartbeat(taskId);
+                },
+                id: 'task-heartbeat',
+                type: 'afterStep' as const,
+              },
+              {
+                handler: async (event) => {
+                  await taskLifecycle.onTopicComplete({
+                    errorMessage: event.errorMessage,
+                    lastAssistantContent: event.lastAssistantContent,
+                    operationId: event.operationId,
+                    reason: event.reason || 'done',
+                    taskId,
+                    taskIdentifier,
+                    topicId: event.topicId,
+                  });
+                },
+                id: 'task-on-complete',
+                type: 'onComplete' as const,
+                webhook: {
+                  body: { taskId, userId: ctx.userId },
+                  url: '/api/workflows/task/on-topic-complete',
+                },
+              },
+            ],
+            prompt,
+            taskId,
+            title: extraPrompt ? extraPrompt.slice(0, 100) : task.name || task.identifier,
+            trigger: 'task',
+            userInterventionConfig: { approvalMode: 'headless' },
+          });
+
+          await ctx.taskTopicModel.updateStatus(task.id, continueTopicId, 'running');
+          await ctx.taskTopicModel.updateOperationId(task.id, continueTopicId, result.operationId);
+          await model.updateCurrentTopic(task.id, continueTopicId);
+          await model.updateHeartbeat(task.id);
+
+          return { ...result, taskId: task.id, taskIdentifier: task.identifier };
         }
 
-        // Update heartbeat
-        await model.updateHeartbeat(task.id);
+        // New topic — use shared executeTaskTopic
+        const result = await executeTaskTopic(task.id, ctx.userId, {
+          extraPrompt,
+        });
 
         return {
           ...result,

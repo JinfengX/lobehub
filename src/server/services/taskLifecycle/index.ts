@@ -10,6 +10,7 @@ import type { LobeChatDatabase } from '@/database/type';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { SystemAgentService } from '@/server/services/systemAgent';
 import { TaskReviewService } from '@/server/services/taskReview';
+import { createTaskSchedulerModule, type TaskSchedulerImpl } from '@/server/services/taskScheduler';
 
 const log = debug('task-lifecycle');
 
@@ -30,13 +31,14 @@ export interface TopicCompleteParams {
 export class TaskLifecycleService {
   private briefModel: BriefModel;
   private db: LobeChatDatabase;
+  private scheduler: TaskSchedulerImpl;
   private systemAgentService: SystemAgentService;
   private taskModel: TaskModel;
   private taskTopicModel: TaskTopicModel;
   private topicModel: TopicModel;
   private userId: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, scheduler?: TaskSchedulerImpl) {
     this.db = db;
     this.userId = userId;
     this.taskModel = new TaskModel(db, userId);
@@ -44,6 +46,7 @@ export class TaskLifecycleService {
     this.briefModel = new BriefModel(db, userId);
     this.topicModel = new TopicModel(db, userId);
     this.systemAgentService = new SystemAgentService(db, userId);
+    this.scheduler = scheduler || createTaskSchedulerModule();
   }
 
   /**
@@ -102,6 +105,9 @@ export class TaskLifecycleService {
       if (currentTask && this.taskModel.shouldPauseOnTopicComplete(currentTask)) {
         await this.taskModel.updateStatus(taskId, 'paused', { error: null });
       }
+
+      // 6. Self-schedule next topic if task should continue
+      await this.maybeScheduleNextTopic(taskId, currentTask);
     } else if (reason === 'error') {
       if (topicId) await this.taskTopicModel.updateStatus(taskId, topicId, 'failed');
 
@@ -118,6 +124,50 @@ export class TaskLifecycleService {
       });
 
       await this.taskModel.updateStatus(taskId, 'paused');
+    }
+  }
+
+  /**
+   * Decide whether to schedule the next topic for a task.
+   *
+   * Conditions to continue:
+   * - Task status is still 'running' (not paused by checkpoint/review)
+   * - maxTopics not reached (or maxTopics is null = unlimited)
+   * - No 'result' brief was produced (Agent didn't signal completion)
+   */
+  private async maybeScheduleNextTopic(taskId: string, task: any): Promise<void> {
+    if (!task) return;
+
+    // Re-read task status (may have been paused by checkpoint or review above)
+    const freshTask = await this.taskModel.findById(taskId);
+    if (!freshTask || freshTask.status !== 'running') {
+      log('skip scheduling: task %s status=%s', taskId, freshTask?.status);
+      return;
+    }
+
+    // Check maxTopics
+    if (freshTask.maxTopics && (freshTask.totalTopics || 0) >= freshTask.maxTopics) {
+      log('skip scheduling: task %s reached maxTopics (%d)', taskId, freshTask.maxTopics);
+      await this.taskModel.updateStatus(taskId, 'paused', { error: null });
+      return;
+    }
+
+    // Check if Agent signaled completion via result brief
+    const briefs = await this.briefModel.findByTaskId(taskId);
+    const latestBrief = briefs[0];
+    if (latestBrief?.type === 'result') {
+      log('skip scheduling: task %s has result brief', taskId);
+      return;
+    }
+
+    log('scheduling next topic for task %s', taskId);
+    try {
+      await this.scheduler.scheduleNextTopic({
+        taskId,
+        userId: this.userId,
+      });
+    } catch (error) {
+      log('failed to schedule next topic for task %s: %O', taskId, error);
     }
   }
 
