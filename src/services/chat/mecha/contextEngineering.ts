@@ -1,4 +1,3 @@
-import { LobeHubIdentifier } from '@lobechat/builtin-skills';
 import { LobeActivatorIdentifier } from '@lobechat/builtin-tool-activator';
 import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
 import { AgentManagementIdentifier } from '@lobechat/builtin-tool-agent-management';
@@ -52,6 +51,7 @@ import {
 } from '@/store/tool/selectors';
 
 import { isCanUseVideo, isCanUseVision } from '../helper';
+import { isLobeHubSkillActive } from './lobeHubSkillActivation';
 import { combineUserMemoryData, resolveTopicMemories, resolveUserPersona } from './memoryManager';
 import { resolveClientSkills } from './skillEngineering';
 
@@ -559,14 +559,24 @@ export const contextEngineering = async ({
     log('mentionedAgents injected: %d agents', initialContext!.mentionedAgents!.length);
   }
 
-  // Build agent identity context when the LobeHub builtin skill is mounted on
-  // the agent. The skill exposes the `lh` CLI which operates on platform
+  // Build agent identity context when the LobeHub builtin skill is active for
+  // this request. The skill exposes the `lh` CLI which operates on platform
   // resources (agents/topics/files/etc), so the model needs to know its own id
   // and current topic up front instead of having to search for itself.
+  //
+  // "Active" covers three independent activation paths — see isLobeHubSkillActive
+  // docstring for the full breakdown:
+  //   1. plugins (persisted in agent config)
+  //   2. initialContext.selectedSkills (slash-menu selected)
+  //   3. stepContext.activatedSkills (model-driven mid-step activation)
   let agentIdentityContext: AgentIdentityContext | undefined;
-  const isLobeHubSkillMounted = plugins?.includes(LobeHubIdentifier) ?? false;
+  const isLobeHubActive = isLobeHubSkillActive({
+    activatedSkills: stepContext?.activatedSkills,
+    plugins,
+    selectedSkills: initialContext?.selectedSkills,
+  });
 
-  if (isLobeHubSkillMounted && agentId) {
+  if (isLobeHubActive && agentId) {
     const agentMeta = agentSelectors.getAgentMetaById(agentId)(agentStoreState);
     const agentConfig = agentSelectors.getAgentConfigById(agentId)(agentStoreState);
     const topic = topicId ? topicSelectors.getTopicById(topicId)(getChatStoreState()) : undefined;
