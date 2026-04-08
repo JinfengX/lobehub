@@ -7,7 +7,7 @@ on:
   pull_request_target:
     types: [closed]
     branches:
-      - main
+      - canary
 
 jobs:
   auto-tag:
@@ -26,8 +26,9 @@ jobs:
 
       - name: Detect release PR (version from title)
         id: release
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
           echo "PR Title: $PR_TITLE"
 
           # Match "🚀 release: v{x.x.x}" format (strict semver: x.y.z with optional -prerelease or +build)
@@ -44,9 +45,10 @@ jobs:
       - name: Detect patch PR (branch first, title fallback)
         id: patch
         if: steps.release.outputs.should_tag != 'true'
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          HEAD_REF="${{ github.event.pull_request.head.ref }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
           echo "Head ref: $HEAD_REF"
           echo "PR Title: $PR_TITLE"
 
@@ -66,11 +68,11 @@ jobs:
             echo "⏭️ Not a patch PR (neither hotfix/release branch nor style/feat/fix/refactor/hotfix/build title prefix)"
           fi
 
-      - name: Prepare main branch
+      - name: Prepare canary branch
         if: steps.release.outputs.should_tag == 'true' || steps.patch.outputs.should_tag == 'true'
         run: |
-          git checkout main
-          git pull --rebase origin main
+          git checkout canary
+          git pull --rebase origin canary
 
       - name: Setup Node.js
         if: steps.release.outputs.should_tag == 'true' || steps.patch.outputs.should_tag == 'true'
@@ -182,7 +184,7 @@ jobs:
           git add package.json CHANGELOG.md changelog/
           COMMIT_MSG="🔖 chore(release): release version v$VERSION [skip ci]"
           git commit -m "$COMMIT_MSG" || echo "Nothing to commit"
-          git push origin HEAD:main
+          git push origin HEAD:canary
 
           # Output the SHA we will tag
           echo "tag_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
@@ -224,14 +226,6 @@ jobs:
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-
-      - name: Sync main to canary
-        if: env.SHOULD_TAG == 'true' && steps.check-tag.outputs.exists == 'false'
-        run: |
-          gh workflow run sync-main-to-canary.yaml
-          echo "✅ Dispatched sync-main-to-canary workflow"
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Output result
         run: |

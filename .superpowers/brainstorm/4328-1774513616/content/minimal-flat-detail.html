@@ -1,0 +1,211 @@
+<h2>Minimal Flat — 细节确认</h2>
+<p class="subtitle">以下为各种状态的详细 mockup，请确认或提出调整</p>
+
+<style>
+  .demo-container {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #e0e0e0;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .section-label {
+    font-size: 11px; color: #666; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 6px; margin-top: 14px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* Minimal Flat tokens */
+  .mf-summary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 8px; cursor: pointer; color: #888;
+    border-radius: 6px;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .mf-summary:hover { background: rgba(255,255,255,0.04); }
+
+  .mf-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 8px 2px 22px; color: #999;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .mf-tool-line:hover { background: rgba(255,255,255,0.03); }
+
+  .mf-reasoning {
+    padding: 2px 8px 2px 22px; color: #666; font-size: 12px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .dot-streaming { background: #6d9fff; animation: pulse 1.5s infinite; }
+  .dot-done { background: #555; }
+  .dot-error { background: #f59e0b; }
+
+  .tool-name-blue { color: #6d9fff; }
+  .tool-name-purple { color: #c084fc; }
+  .tool-name-green { color: #4ade80; }
+  .tool-name-orange { color: #fb923c; }
+  .tool-name-error { color: #ef4444; }
+  .tool-sep { color: #444; }
+  .tool-detail { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chevron { color: #555; font-size: 10px; flex-shrink: 0; }
+  .duration { color: #555; flex-shrink: 0; margin-left: auto; font-size: 12px; }
+  .error-suffix { color: #ef4444; font-size: 12px; flex-shrink: 0; }
+
+  .answer-text {
+    padding: 8px 0 0 0; color: #e0e0e0; line-height: 1.6;
+  }
+  .msg-sep { height: 8px; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+</style>
+
+<div class="mockup">
+  <div class="mockup-header">Streaming 状态 — 工具执行中</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-streaming"></span>
+        <span>Working...</span>
+      </div>
+      <div class="mf-reasoning">Thought for 8s</div>
+      <div class="mf-tool-line">
+        <span class="tool-name-purple">Searched the web</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">React performance optimization 2024</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://react.dev/blog/react-19</span>
+      </div>
+      <div class="mf-tool-line" style="opacity: 0.6;">
+        <span class="tool-name-green">Writing a file</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">src/utils/memo.ts</span>
+        <span class="status-dot dot-streaming" style="margin-left: auto;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Collapsed 状态 — 完成后自动折叠</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Crawled a page (2), Wrote a file</span>
+        <span class="duration">12s</span>
+        <span class="chevron">▶</span>
+      </div>
+
+      <div class="msg-sep"></div>
+      <div class="answer-text">
+        Based on my research, here are the key React performance patterns you should consider...
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Expanded 状态 — 点击展开详情</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Crawled a page (2), Wrote a file</span>
+        <span class="duration">12s</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="mf-reasoning">Thought for 4s</div>
+      <div class="mf-tool-line">
+        <span class="tool-name-purple">Searched the web</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">React performance optimization 2024</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://react.dev/blog/react-19</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://nextjs.org/docs/optimizing</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-name-green">Wrote a file</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">src/utils/memo.ts</span>
+      </div>
+
+      <div class="msg-sep"></div>
+      <div class="answer-text">
+        Based on my research, here are the key React performance patterns you should consider...
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Error 状态 — 有工具执行失败</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-error"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Ran a command (failed)</span>
+        <span class="duration">6s</span>
+        <span class="chevron">▶</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">多轮工具调用 — 两组 collapse 连续出现</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <!-- First round collapsed -->
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Read knowledge (2)</span>
+        <span class="duration">5s</span>
+        <span class="chevron">▶</span>
+      </div>
+
+      <div class="msg-sep"></div>
+      <div class="answer-text" style="font-size: 13px; color: #bbb;">
+        Let me look into this further...
+      </div>
+      <div class="msg-sep"></div>
+
+      <!-- Second round streaming -->
+      <div class="mf-summary">
+        <span class="status-dot dot-streaming"></span>
+        <span>Working...</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-name-orange">Ran a command</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">npm test -- --watch</span>
+      </div>
+      <div class="mf-tool-line" style="opacity: 0.6;">
+        <span class="tool-name-green">Writing a file</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">src/components/Button.test.tsx</span>
+        <span class="status-dot dot-streaming" style="margin-left: auto;"></span>
+      </div>
+    </div>
+  </div>
+</div>

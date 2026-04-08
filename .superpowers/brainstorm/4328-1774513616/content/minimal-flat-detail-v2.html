@@ -1,0 +1,245 @@
+<h2>Minimal Flat — Tool 行可展开</h2>
+<p class="subtitle">每个 tool line 可点击展开查看参数/结果，整体保持紧凑</p>
+
+<style>
+  .demo-container {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #e0e0e0;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Summary row */
+  .mf-summary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 8px; cursor: pointer; color: #888;
+    border-radius: 6px;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .mf-summary:hover { background: rgba(255,255,255,0.04); }
+
+  /* Tool line (collapsed) */
+  .mf-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 8px 2px 22px; color: #999;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .mf-tool-line:hover { background: rgba(255,255,255,0.03); }
+
+  /* Tool line expanded detail */
+  .mf-tool-detail-panel {
+    margin: 2px 0 4px 22px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    font-size: 12px;
+    color: #888;
+    line-height: 1.5;
+    border-left: 2px solid rgba(255,255,255,0.08);
+  }
+  .mf-tool-detail-panel .detail-label {
+    font-size: 11px; color: #555; text-transform: uppercase;
+    letter-spacing: 0.3px; margin-bottom: 2px;
+  }
+  .mf-tool-detail-panel pre {
+    margin: 4px 0; padding: 6px 8px;
+    background: rgba(0,0,0,0.3); border-radius: 4px;
+    font-size: 12px; color: #aaa; overflow-x: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* Reasoning line */
+  .mf-reasoning {
+    padding: 2px 8px 2px 22px; color: #666; font-size: 12px;
+  }
+
+  /* Tokens */
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .dot-streaming { background: #6d9fff; animation: pulse 1.5s infinite; }
+  .dot-done { background: #555; }
+  .dot-error { background: #f59e0b; }
+
+  .tool-name-blue { color: #6d9fff; }
+  .tool-name-purple { color: #c084fc; }
+  .tool-name-green { color: #4ade80; }
+  .tool-name-orange { color: #fb923c; }
+  .tool-name-error { color: #ef4444; }
+  .tool-sep { color: #444; }
+  .tool-detail { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-chevron { color: #444; font-size: 9px; flex-shrink: 0; width: 10px; text-align: center; }
+  .chevron { color: #555; font-size: 10px; flex-shrink: 0; }
+  .duration { color: #555; flex-shrink: 0; margin-left: auto; font-size: 12px; }
+  .answer-text { padding: 8px 0 0 0; color: #e0e0e0; line-height: 1.6; }
+  .msg-sep { height: 8px; }
+
+  /* Action buttons on hover */
+  .mf-actions {
+    display: none; align-items: center; gap: 2px;
+    margin-left: auto;
+  }
+  .mf-tool-line:hover .mf-actions { display: flex; }
+  .mf-action-btn {
+    width: 20px; height: 20px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #666; font-size: 11px; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .mf-action-btn:hover { background: rgba(255,255,255,0.08); color: #aaa; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+</style>
+
+<div class="mockup">
+  <div class="mockup-header">Expanded — 第二个 tool 展开了详情</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Crawled a page (2), Wrote a file</span>
+        <span class="duration">12s</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="mf-reasoning">Thought for 4s</div>
+
+      <!-- Tool 1: collapsed -->
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-purple">Searched the web</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">React performance optimization 2024</span>
+        <div class="mf-actions">
+          <span class="mf-action-btn" title="Debug">🐛</span>
+          <span class="mf-action-btn" title="Args">☰</span>
+        </div>
+      </div>
+
+      <!-- Tool 2: EXPANDED -->
+      <div class="mf-tool-line" style="background: rgba(255,255,255,0.03);">
+        <span class="tool-chevron">▼</span>
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://react.dev/blog/react-19</span>
+      </div>
+      <div class="mf-tool-detail-panel">
+        <div class="detail-label">Result</div>
+        <pre>React 19 introduces several new features:
+- Actions: async functions in transitions
+- useOptimistic: optimistic UI updates
+- use(): read resources in render
+- Server Components: stable
+- ref as prop: no more forwardRef...</pre>
+      </div>
+
+      <!-- Tool 3: collapsed -->
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://nextjs.org/docs/optimizing</span>
+      </div>
+
+      <!-- Tool 4: collapsed -->
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-green">Wrote a file</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">src/utils/memo.ts</span>
+      </div>
+
+      <div class="msg-sep"></div>
+      <div class="answer-text">
+        Based on my research, here are the key React performance patterns...
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Streaming — 正在执行中，最后一行活跃</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-streaming"></span>
+        <span>Working...</span>
+      </div>
+      <div class="mf-reasoning">Thought for 8s</div>
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-purple">Searched the web</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">React performance optimization 2024</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-purple">Crawled a page</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">https://react.dev/blog/react-19</span>
+      </div>
+      <div class="mf-tool-line" style="opacity: 0.7;">
+        <span class="tool-chevron" style="opacity: 0;">▶</span>
+        <span class="tool-name-green">Writing a file</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">src/utils/memo.ts</span>
+        <span class="status-dot dot-streaming" style="margin-left: auto;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Collapsed — 全部完成后自动折叠</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Crawled a page (2), Wrote a file</span>
+        <span class="duration">12s</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="msg-sep"></div>
+      <div class="answer-text">
+        Based on my research, here are the key React performance patterns...
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Error — tool 行显示失败状态</div>
+  <div class="mockup-body">
+    <div class="demo-container">
+      <div class="mf-summary">
+        <span class="status-dot dot-done"></span>
+        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Searched the web, Ran a command (failed)</span>
+        <span class="duration">6s</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-purple">Searched the web</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">Node.js process management</span>
+      </div>
+      <div class="mf-tool-line">
+        <span class="tool-chevron">▶</span>
+        <span class="tool-name-orange">Ran a command</span>
+        <span class="tool-sep">—</span>
+        <span class="tool-detail">npm run build</span>
+        <span style="color: #ef4444; font-size: 12px; flex-shrink: 0; margin-left: auto;">failed</span>
+      </div>
+    </div>
+  </div>
+</div>

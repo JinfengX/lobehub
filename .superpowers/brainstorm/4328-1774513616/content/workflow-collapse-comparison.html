@@ -1,0 +1,326 @@
+<h2>Workflow Collapse 样式统一方案</h2>
+<p class="subtitle">对比当前状态与三种紧凑方案，点击选择你偏好的方向</p>
+
+<style>
+  /* Shared mock styles */
+  .demo-container {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #e0e0e0;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Current state styles */
+  .current-border {
+    border: 1px solid rgba(99,102,241,0.12);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .current-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .current-tool-line:hover { background: rgba(128,128,128,0.06); }
+  .current-reasoning { color: #555; font-size: 13px; padding: 4px 12px 4px 8px; }
+  .current-summary {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; cursor: pointer;
+  }
+  .current-summary:hover { background: rgba(128,128,128,0.08); }
+
+  /* Option A: Minimal flat */
+  .flat-container { border-radius: 8px; overflow: hidden; }
+  .flat-summary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; cursor: pointer; color: #888;
+    transition: background 0.15s;
+  }
+  .flat-summary:hover { background: rgba(255,255,255,0.04); }
+  .flat-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 10px 3px 24px; color: #999;
+  }
+  .flat-reasoning {
+    padding: 3px 10px 3px 24px; color: #666; font-size: 12px;
+  }
+
+  /* Option B: Soft card */
+  .soft-container {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; overflow: hidden;
+  }
+  .soft-summary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; cursor: pointer; color: #888;
+    transition: background 0.15s;
+  }
+  .soft-summary:hover { background: rgba(255,255,255,0.03); }
+  .soft-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 0 10px; }
+  .soft-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; color: #999;
+  }
+  .soft-reasoning {
+    padding: 3px 10px; color: #666; font-size: 12px;
+  }
+
+  /* Option C: Inline tags */
+  .tag-container { border-radius: 8px; overflow: hidden; }
+  .tag-summary {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 6px 10px; cursor: pointer; color: #888;
+  }
+  .tag-summary:hover { background: rgba(255,255,255,0.04); }
+  .tag-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.06); font-size: 12px; color: #aaa;
+  }
+  .tag-tool-line {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 10px 3px 24px; color: #999;
+  }
+
+  .tool-name-blue { color: #6d9fff; }
+  .tool-name-purple { color: #c084fc; }
+  .tool-name-green { color: #4ade80; }
+  .tool-name-orange { color: #fb923c; }
+  .tool-detail { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-sep { color: #444; }
+  .chevron { color: #555; font-size: 11px; }
+  .err-icon { color: #f59e0b; font-size: 12px; }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .dot-blue { background: #6d9fff; }
+  .dot-green { background: #4ade80; }
+  .dot-done { background: #555; }
+
+  .section-label {
+    font-size: 11px; color: #666; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+</style>
+
+<div class="cards">
+  <!-- CURRENT STATE -->
+  <div class="card" data-choice="current" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>当前状态 (Current)</h3>
+      <p>样式割裂：inline style + createStaticStyles 混用，硬编码色值</p>
+    </div>
+    <div class="card-image">
+      <div class="demo-container">
+        <div class="section-label">Streaming 状态</div>
+        <div class="current-border" style="margin-bottom: 12px;">
+          <div style="padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 8px;">
+            <div class="current-reasoning">Thought for 12s</div>
+            <div class="current-tool-line">
+              <span class="tool-name-purple">Searched the web</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">React performance patterns</span>
+            </div>
+            <div class="current-tool-line">
+              <span class="tool-name-purple">Crawled a page</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">https://react.dev/blog/...</span>
+            </div>
+            <div class="current-tool-line">
+              <span class="tool-name-green">Wrote a file</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">src/utils/memo.ts</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Collapsed 状态</div>
+        <div style="border-radius: 8px; overflow: hidden;">
+          <div class="current-summary">
+            <span class="chevron">▶</span>
+            <span style="color: #888; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              Searched the web, Crawled a page (2), Wrote a file · Thought for 12s
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION A: Minimal Flat -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>A. Minimal Flat</h3>
+      <p>无边框无背景，纯缩进层级，最紧凑。Summary 行用 status dot 代替 chevron</p>
+    </div>
+    <div class="card-image">
+      <div class="demo-container">
+        <div class="section-label">Streaming 状态</div>
+        <div class="flat-container" style="margin-bottom: 12px;">
+          <div class="flat-summary">
+            <span class="status-dot dot-blue" style="animation: pulse 1.5s infinite;"></span>
+            <span>Working...</span>
+          </div>
+          <div class="flat-reasoning">Thought for 12s</div>
+          <div class="flat-tool-line">
+            <span class="tool-name-purple">Searched the web</span>
+            <span class="tool-sep">—</span>
+            <span class="tool-detail">React performance patterns</span>
+          </div>
+          <div class="flat-tool-line">
+            <span class="tool-name-purple">Crawled a page</span>
+            <span class="tool-sep">—</span>
+            <span class="tool-detail">https://react.dev/blog/...</span>
+          </div>
+          <div class="flat-tool-line">
+            <span class="tool-name-green">Wrote a file</span>
+            <span class="tool-sep">—</span>
+            <span class="tool-detail">src/utils/memo.ts</span>
+          </div>
+        </div>
+
+        <div class="section-label">Collapsed 状态</div>
+        <div class="flat-container">
+          <div class="flat-summary">
+            <span class="status-dot dot-done"></span>
+            <span>Searched the web, Crawled a page (2), Wrote a file</span>
+            <span style="color: #555; margin-left: auto;">12s</span>
+            <span class="chevron">▼</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Soft Card -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>B. Soft Card</h3>
+      <p>浅背景 + 微边框，summary 与 list 用分割线隔开。视觉层次更清晰</p>
+    </div>
+    <div class="card-image">
+      <div class="demo-container">
+        <div class="section-label">Streaming 状态</div>
+        <div class="soft-container" style="margin-bottom: 12px;">
+          <div class="soft-summary">
+            <span class="status-dot dot-blue" style="animation: pulse 1.5s infinite;"></span>
+            <span>Working...</span>
+          </div>
+          <div class="soft-divider"></div>
+          <div style="padding: 4px 0;">
+            <div class="soft-reasoning">Thought for 12s</div>
+            <div class="soft-tool-line">
+              <span class="tool-name-purple">Searched the web</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">React performance patterns</span>
+            </div>
+            <div class="soft-tool-line">
+              <span class="tool-name-purple">Crawled a page</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">https://react.dev/blog/...</span>
+            </div>
+            <div class="soft-tool-line">
+              <span class="tool-name-green">Wrote a file</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">src/utils/memo.ts</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Collapsed 状态</div>
+        <div class="soft-container">
+          <div class="soft-summary">
+            <span class="status-dot dot-done"></span>
+            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              Searched the web, Crawled a page (2), Wrote a file
+            </span>
+            <span style="color: #555; flex-shrink: 0;">12s</span>
+            <span class="chevron">▼</span>
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top: 12px;">Expanded 状态</div>
+        <div class="soft-container">
+          <div class="soft-summary">
+            <span class="status-dot dot-done"></span>
+            <span style="flex: 1;">Searched the web, Crawled a page (2), Wrote a file</span>
+            <span style="color: #555;">12s</span>
+            <span class="chevron">▲</span>
+          </div>
+          <div class="soft-divider"></div>
+          <div style="padding: 4px 0;">
+            <div class="soft-reasoning">Thought for 12s</div>
+            <div class="soft-tool-line">
+              <span class="tool-name-purple">Searched the web</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">React performance patterns</span>
+            </div>
+            <div class="soft-tool-line">
+              <span class="tool-name-purple">Crawled a page</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">https://react.dev/blog/...</span>
+            </div>
+            <div class="soft-tool-line">
+              <span class="tool-name-green">Wrote a file</span>
+              <span class="tool-sep">—</span>
+              <span class="tool-detail">src/utils/memo.ts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C: Inline Tags -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>C. Inline Tags</h3>
+      <p>Collapsed 时用 pill tag 展示工具摘要，更信息密集</p>
+    </div>
+    <div class="card-image">
+      <div class="demo-container">
+        <div class="section-label">Streaming 状态</div>
+        <div class="tag-container" style="margin-bottom: 12px;">
+          <div class="tag-summary">
+            <span class="status-dot dot-blue" style="animation: pulse 1.5s infinite;"></span>
+            <span>Working...</span>
+            <span class="tag-pill"><span class="tool-name-purple" style="font-size:12px;">Search</span> ×2</span>
+            <span class="tag-pill"><span class="tool-name-green" style="font-size:12px;">Write</span> ×1</span>
+          </div>
+          <div class="tag-tool-line">
+            <span class="tool-name-green">Wrote a file</span>
+            <span class="tool-sep">—</span>
+            <span class="tool-detail">src/utils/memo.ts</span>
+          </div>
+        </div>
+
+        <div class="section-label">Collapsed 状态</div>
+        <div class="tag-container">
+          <div class="tag-summary">
+            <span class="status-dot dot-done"></span>
+            <span class="tag-pill"><span class="tool-name-purple" style="font-size:12px;">Search</span> ×2</span>
+            <span class="tag-pill"><span class="tool-name-purple" style="font-size:12px;">Crawl</span> ×2</span>
+            <span class="tag-pill"><span class="tool-name-green" style="font-size:12px;">Write</span> ×1</span>
+            <span style="color: #555; margin-left: auto;">12s</span>
+            <span class="chevron">▼</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
