@@ -57,7 +57,7 @@ async function executeTaskTopic(
   taskId: string,
   userId: string,
   options?: { extraPrompt?: string },
-): Promise<{ operationId: string; topicId?: string }> {
+): Promise<Record<string, any>> {
   const { getServerDB } = await import('@/database/server');
   const db = await getServerDB();
 
@@ -149,7 +149,7 @@ async function executeTaskTopic(
 
   await taskModel.updateHeartbeat(task.id);
 
-  return { operationId: result.operationId, topicId: result.topicId };
+  return { ...result, operationId: result.operationId, topicId: result.topicId };
 }
 
 const taskProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
