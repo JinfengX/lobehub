@@ -7,6 +7,7 @@ import type {
 } from '@/libs/agent-stream';
 import { AgentStreamClient } from '@/libs/agent-stream/client';
 import { aiAgentService } from '@/services/aiAgent';
+import { topicService } from '@/services/topic';
 import type { ChatStore } from '@/store/chat/store';
 import type { StoreSetter } from '@/store/types';
 import { useUserStore } from '@/store/user';
@@ -233,7 +234,14 @@ export class GatewayActionImpl {
       onEvent: eventHandler,
       onSessionComplete: () => {
         this.#get().completeOperation(gatewayOpId);
-        if (result.topicId) this.#get().internal_updateTopicLoading(result.topicId, false);
+        if (result.topicId) {
+          this.#get().internal_updateTopicLoading(result.topicId, false);
+          // Clear running operation from topic metadata (best-effort from frontend;
+          // if browser was closed, reconnect logic will handle stale entries)
+          topicService
+            .updateTopicMetadata(result.topicId, { runningOperation: null })
+            .catch(() => {});
+        }
       },
       operationId: result.operationId,
       token: result.token || '',

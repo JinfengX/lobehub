@@ -1076,6 +1076,14 @@ export class AiAgentService {
 
       log('execAgent: created operation %s (autoStarted: %s)', operationId, result.autoStarted);
 
+      // Persist running operation to topic metadata for reconnect after page reload
+      await this.topicModel.updateMetadata(topicId, {
+        runningOperation: {
+          assistantMessageId: assistantMessageRecord.id,
+          operationId,
+        },
+      });
+
       // Generate a short-lived JWT for Gateway WebSocket authentication
       let gatewayToken: string | undefined;
       try {

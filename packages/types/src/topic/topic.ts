@@ -49,6 +49,15 @@ export interface ChatTopicMetadata {
   cronJobId?: string;
   model?: string;
   provider?: string;
+  /**
+   * Currently running Gateway operation on this topic.
+   * Set when agent execution starts, cleared when it completes/fails.
+   * Used to reconnect WebSocket after page reload.
+   */
+  runningOperation?: {
+    assistantMessageId: string;
+    operationId: string;
+  } | null;
   userMemoryExtractRunState?: TopicUserMemoryExtractRunState;
   userMemoryExtractStatus?: 'pending' | 'completed' | 'failed';
   /**
