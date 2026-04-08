@@ -159,6 +159,38 @@ export function replayAgentEvents(events: AgentStreamEvent[], options: StreamOpt
   }
 }
 
+/**
+ * Connect to agent stream via Gateway WebSocket (preferred) or SSE fallback.
+ * Shared by `lh agent run` and `lh task start/run`.
+ */
+export async function followAgentStream(
+  operationId: string,
+  options: { json?: boolean; sse?: boolean; verbose?: boolean } = {},
+): Promise<void> {
+  const { getAgentStreamAuthInfo } = await import('../api/http');
+  const { resolveAgentGatewayUrl } = await import('../settings');
+
+  const { serverUrl, headers } = await getAgentStreamAuthInfo();
+  const agentGatewayUrl = options.sse ? undefined : resolveAgentGatewayUrl();
+
+  if (agentGatewayUrl) {
+    const token = headers['Oidc-Auth'] || headers['X-API-Key'] || '';
+    await streamAgentEventsViaWebSocket({
+      gatewayUrl: agentGatewayUrl,
+      json: options.json,
+      operationId,
+      token,
+      verbose: options.verbose,
+    });
+  } else {
+    const streamUrl = `${serverUrl}/api/agent/stream?operationId=${encodeURIComponent(operationId)}`;
+    await streamAgentEvents(streamUrl, headers, {
+      json: options.json,
+      verbose: options.verbose,
+    });
+  }
+}
+
 const HEARTBEAT_INTERVAL = 30_000;
 
 /**

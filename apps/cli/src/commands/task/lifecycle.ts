@@ -2,35 +2,8 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 
 import { getTrpcClient } from '../../api/client';
-import { getAgentStreamAuthInfo } from '../../api/http';
-import { resolveAgentGatewayUrl } from '../../settings';
-import { streamAgentEvents, streamAgentEventsViaWebSocket } from '../../utils/agentStream';
+import { followAgentStream } from '../../utils/agentStream';
 import { log } from '../../utils/logger';
-
-async function followAgentStream(
-  operationId: string,
-  options: { json?: boolean; verbose?: boolean },
-): Promise<void> {
-  const { serverUrl, headers } = await getAgentStreamAuthInfo();
-  const agentGatewayUrl = resolveAgentGatewayUrl();
-
-  if (agentGatewayUrl) {
-    const token = headers['Oidc-Auth'] || headers['X-API-Key'] || '';
-    await streamAgentEventsViaWebSocket({
-      gatewayUrl: agentGatewayUrl,
-      json: options.json,
-      operationId,
-      token,
-      verbose: options.verbose,
-    });
-  } else {
-    const streamUrl = `${serverUrl}/api/agent/stream?operationId=${encodeURIComponent(operationId)}`;
-    await streamAgentEvents(streamUrl, headers, {
-      json: options.json,
-      verbose: options.verbose,
-    });
-  }
-}
 
 export function registerLifecycleCommands(task: Command) {
   // ── start ──────────────────────────────────────────────

@@ -4,13 +4,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 
 import { getTrpcClient } from '../api/client';
-import { getAgentStreamAuthInfo } from '../api/http';
-import { resolveAgentGatewayUrl } from '../settings';
-import {
-  replayAgentEvents,
-  streamAgentEvents,
-  streamAgentEventsViaWebSocket,
-} from '../utils/agentStream';
+import { followAgentStream, replayAgentEvents } from '../utils/agentStream';
 import { resolveLocalDeviceId } from '../utils/device';
 import { confirm, outputJson, printTable, truncate } from '../utils/format';
 import { log, setVerbose } from '../utils/logger';
@@ -355,25 +349,11 @@ export function registerAgentCommand(program: Command) {
         }
 
         // 2. Connect to stream (WebSocket via Gateway, or fallback to SSE)
-        const { serverUrl, headers } = await getAgentStreamAuthInfo();
-        const agentGatewayUrl = options.sse ? undefined : resolveAgentGatewayUrl();
-
-        if (agentGatewayUrl) {
-          const token = headers['Oidc-Auth'] || headers['X-API-Key'] || '';
-          await streamAgentEventsViaWebSocket({
-            gatewayUrl: agentGatewayUrl,
-            json: options.json,
-            operationId,
-            token,
-            verbose: options.verbose,
-          });
-        } else {
-          const streamUrl = `${serverUrl}/api/agent/stream?operationId=${encodeURIComponent(operationId)}`;
-          await streamAgentEvents(streamUrl, headers, {
-            json: options.json,
-            verbose: options.verbose,
-          });
-        }
+        await followAgentStream(operationId, {
+          json: options.json,
+          sse: options.sse,
+          verbose: options.verbose,
+        });
       },
     );
 
