@@ -1225,4 +1225,18 @@ export const aiAgentRouter = router({
         });
       }
     }),
+
+  /**
+   * Refresh Gateway JWT token for an existing operation.
+   * Used when reconnecting after page reload (original token expired).
+   */
+  refreshGatewayToken: aiAgentProcedure.query(async ({ ctx }) => {
+    // Sign a fresh JWT for Gateway WebSocket authentication.
+    // The token is scoped to the authenticated user (ctx.userId),
+    // and the Gateway validates payload.sub matches the stored userId.
+    const { signUserJWT } = await import('@/libs/trpc/utils/internalJwt');
+    const token = await signUserJWT(ctx.userId);
+
+    return { token };
+  }),
 });
