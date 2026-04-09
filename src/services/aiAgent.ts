@@ -111,8 +111,8 @@ class AiAgentService {
   /**
    * Get a fresh JWT token for Gateway WebSocket reconnection.
    */
-  async refreshGatewayToken(): Promise<{ token: string }> {
-    return await lambdaClient.aiAgent.refreshGatewayToken.query();
+  async refreshGatewayToken(topicId: string): Promise<{ token: string }> {
+    return await lambdaClient.aiAgent.refreshGatewayToken.query({ topicId });
   }
 
   async execSubAgentTask(params: ExecSubAgentTaskParams) {

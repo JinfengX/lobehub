@@ -270,7 +270,7 @@ export class GatewayActionImpl {
       window.global_serverConfigStore!.getState().serverConfig.agentGatewayUrl!;
 
     // Get a fresh JWT token (original expired after 5 min)
-    const { token } = await aiAgentService.refreshGatewayToken();
+    const { token } = await aiAgentService.refreshGatewayToken(topicId);
 
     const agentId = this.#get().activeAgentId;
     const context = {
