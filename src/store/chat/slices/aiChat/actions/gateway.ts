@@ -203,12 +203,9 @@ export class GatewayActionImpl {
       prompt: message,
     });
 
-    // If server created a new topic, switch to it and clean up the _new key temp messages
+    // If server created a new topic, fetch messages first then switch topic
+    // (same pattern as client mode: replaceMessages before switchTopic to avoid skeleton flash)
     if (isCreateNewTopic && result.topicId) {
-      await this.#get().switchTopic(result.topicId, { clearNewKey: true });
-
-      // Eagerly fetch messages so the UI doesn't show a skeleton loading state
-      // while waiting for SWR to re-fetch after topic switch
       try {
         const newContext = { ...context, topicId: result.topicId };
         const messages = await messageService.getMessages(newContext);
@@ -216,6 +213,11 @@ export class GatewayActionImpl {
       } catch {
         /* non-critical */
       }
+
+      await this.#get().switchTopic(result.topicId, {
+        clearNewKey: true,
+        skipRefreshMessage: true,
+      });
     }
 
     // Use the server-created topicId for the execution context
