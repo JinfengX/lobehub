@@ -1821,6 +1821,16 @@ export const createRuntimeExecutors = (
 
     log('[%s:%d] Finishing execution: (%s)', operationId, stepIndex, reason);
 
+    // Clear runningOperation from topic metadata so reconnect doesn't trigger after completion
+    if (ctx.topicId && ctx.userId) {
+      try {
+        const topicModel = new TopicModel(ctx.serverDB, ctx.userId);
+        await topicModel.updateMetadata(ctx.topicId, { runningOperation: null });
+      } catch (e) {
+        log('[%s] Failed to clear runningOperation metadata: %O', operationId, e);
+      }
+    }
+
     // Publish execution complete event
     await streamManager.publishStreamEvent(operationId, {
       data: {

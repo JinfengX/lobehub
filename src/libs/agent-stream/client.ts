@@ -14,6 +14,7 @@ const INITIAL_RECONNECT_DELAY = 1000; // 1s
 const MAX_RECONNECT_DELAY = 30_000; // 30s
 const MAX_MISSED_HEARTBEATS = 3;
 const RESUME_FLUSH_DELAY = 500; // 500ms debounce after last resume event
+const RESUME_TIMEOUT = 3000; // 3s: if no events after resume request, session is already done
 
 // ─── Typed Event Emitter (browser-compatible, no node:events) ───
 
@@ -209,6 +210,17 @@ export class AgentStreamClient extends TypedEmitter {
           if (!this.lastEventId) {
             this.resumeMode = true;
             this.resumeBuffer = [];
+
+            // Safety timeout: if no events arrive after resume, the session has already
+            // completed and the DO has nothing to replay. Exit resume mode and signal completion.
+            this.resumeFlushTimer = setTimeout(() => {
+              if (this.resumeMode && this.resumeBuffer.length === 0) {
+                this.resumeMode = false;
+                this.sessionEnded = true;
+                this.emit('session_complete');
+                this.disconnect();
+              }
+            }, RESUME_TIMEOUT);
           }
 
           // Request all buffered events (covers events pushed before WS connected)
