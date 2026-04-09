@@ -13,6 +13,7 @@ const HEARTBEAT_INTERVAL = 30_000; // 30s
 const INITIAL_RECONNECT_DELAY = 1000; // 1s
 const MAX_RECONNECT_DELAY = 30_000; // 30s
 const MAX_MISSED_HEARTBEATS = 3;
+const RESUME_FLUSH_DELAY = 500; // 500ms debounce after last resume event
 
 // ─── Typed Event Emitter (browser-compatible, no node:events) ───
 
@@ -69,6 +70,12 @@ export class AgentStreamClient extends TypedEmitter {
   private intentionalDisconnect = false;
   private lastEventId = '';
   private sessionEnded = false;
+
+  // Resume buffering: when reconnecting with empty lastEventId, buffer events
+  // until resume replay completes, then deduplicate and emit in order.
+  private resumeBuffer: Array<{ event: AgentStreamEvent; id?: string }> = [];
+  private resumeMode = false;
+  private resumeFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly gatewayUrl: string;
   private readonly operationId: string;
@@ -196,6 +203,14 @@ export class AgentStreamClient extends TypedEmitter {
         case 'auth_success': {
           this.setStatus('connected');
           this.startHeartbeat();
+
+          // Enter resume mode when reconnecting with no lastEventId (page reload).
+          // Buffer all events until resume replay completes, then deduplicate and emit.
+          if (!this.lastEventId) {
+            this.resumeMode = true;
+            this.resumeBuffer = [];
+          }
+
           // Request all buffered events (covers events pushed before WS connected)
           this.sendMessage({ lastEventId: this.lastEventId, type: 'resume' });
           this.emit('connected');
@@ -216,6 +231,20 @@ export class AgentStreamClient extends TypedEmitter {
         case 'agent_event': {
           const agentEvent: AgentStreamEvent = message.event;
           if (message.id) this.lastEventId = message.id;
+
+          if (this.resumeMode) {
+            // Buffer events during resume — will be deduplicated and emitted after replay
+            this.resumeBuffer.push({ event: agentEvent, id: message.id });
+            this.scheduleResumeFlush();
+
+            // Terminal events still end the session even in resume mode
+            if (agentEvent.type === 'agent_runtime_end' || agentEvent.type === 'error') {
+              this.sessionEnded = true;
+              this.flushResumeBuffer();
+              this.disconnect();
+            }
+            break;
+          }
 
           this.emit('agent_event', agentEvent);
 
@@ -322,6 +351,52 @@ export class AgentStreamClient extends TypedEmitter {
     this.emit('status_changed', status);
   }
 
+  // ─── Resume Buffering ───
+
+  /**
+   * Schedule a debounced flush of the resume buffer.
+   * Resume replay events arrive in rapid succession; once there's a 500ms gap,
+   * we consider the replay done and flush the deduplicated buffer.
+   */
+  private scheduleResumeFlush(): void {
+    if (this.resumeFlushTimer) clearTimeout(this.resumeFlushTimer);
+    this.resumeFlushTimer = setTimeout(() => {
+      this.flushResumeBuffer();
+    }, RESUME_FLUSH_DELAY);
+  }
+
+  /**
+   * Deduplicate buffered events by event ID and emit them in order.
+   */
+  private flushResumeBuffer(): void {
+    if (!this.resumeMode) return;
+    this.resumeMode = false;
+
+    if (this.resumeFlushTimer) {
+      clearTimeout(this.resumeFlushTimer);
+      this.resumeFlushTimer = null;
+    }
+
+    // Deduplicate by event ID, keeping the first occurrence (from resume replay)
+    const seen = new Set<string>();
+    const deduped: AgentStreamEvent[] = [];
+
+    for (const { event, id } of this.resumeBuffer) {
+      const key = id || `${event.type}_${event.stepIndex}_${event.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(event);
+      }
+    }
+
+    this.resumeBuffer = [];
+
+    // Emit deduplicated events in order
+    for (const event of deduped) {
+      this.emit('agent_event', event);
+    }
+  }
+
   // ─── Helpers ───
 
   private sendMessage(data: ClientMessage): void {
@@ -349,5 +424,11 @@ export class AgentStreamClient extends TypedEmitter {
     this.stopHeartbeat();
     this.clearReconnectTimer();
     this.closeWebSocket();
+    if (this.resumeFlushTimer) {
+      clearTimeout(this.resumeFlushTimer);
+      this.resumeFlushTimer = null;
+    }
+    this.resumeMode = false;
+    this.resumeBuffer = [];
   }
 }
