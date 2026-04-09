@@ -7,6 +7,7 @@ import type {
 } from '@/libs/agent-stream';
 import { AgentStreamClient } from '@/libs/agent-stream/client';
 import { aiAgentService } from '@/services/aiAgent';
+import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
 import type { ChatStore } from '@/store/chat/store';
 import type { StoreSetter } from '@/store/types';
@@ -205,6 +206,16 @@ export class GatewayActionImpl {
     // If server created a new topic, switch to it and clean up the _new key temp messages
     if (isCreateNewTopic && result.topicId) {
       await this.#get().switchTopic(result.topicId, { clearNewKey: true });
+
+      // Eagerly fetch messages so the UI doesn't show a skeleton loading state
+      // while waiting for SWR to re-fetch after topic switch
+      try {
+        const newContext = { ...context, topicId: result.topicId };
+        const messages = await messageService.getMessages(newContext);
+        this.#get().replaceMessages(messages, { context: newContext });
+      } catch {
+        /* non-critical */
+      }
     }
 
     // Use the server-created topicId for the execution context
