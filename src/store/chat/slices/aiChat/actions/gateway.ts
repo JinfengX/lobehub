@@ -258,9 +258,11 @@ export class GatewayActionImpl {
   reconnectToGatewayOperation = async (params: {
     assistantMessageId: string;
     operationId: string;
+    scope?: string;
+    threadId?: string | null;
     topicId: string;
   }): Promise<void> => {
-    const { assistantMessageId, operationId, topicId } = params;
+    const { assistantMessageId, operationId, topicId, scope, threadId } = params;
 
     if (!this.isGatewayModeEnabled()) return;
 
@@ -271,7 +273,12 @@ export class GatewayActionImpl {
     const { token } = await aiAgentService.refreshGatewayToken();
 
     const agentId = this.#get().activeAgentId;
-    const context = { agentId, topicId, scope: 'main' as const, threadId: null };
+    const context = {
+      agentId,
+      scope: (scope ?? 'main') as ConversationContext['scope'],
+      threadId: threadId ?? null,
+      topicId,
+    };
 
     // Create a local operation for UI loading state
     const { operationId: gatewayOpId } = this.#get().startOperation({

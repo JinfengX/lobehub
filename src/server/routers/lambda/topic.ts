@@ -563,6 +563,8 @@ export const topicRouter = router({
             .object({
               assistantMessageId: z.string(),
               operationId: z.string(),
+              scope: z.string().optional(),
+              threadId: z.string().nullable().optional(),
             })
             .nullable()
             .optional(),

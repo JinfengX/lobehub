@@ -1081,6 +1081,8 @@ export class AiAgentService {
         runningOperation: {
           assistantMessageId: assistantMessageRecord.id,
           operationId,
+          scope: appContext?.scope ?? undefined,
+          threadId: appContext?.threadId ?? undefined,
         },
       });
 

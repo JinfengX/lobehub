@@ -57,6 +57,8 @@ export interface ChatTopicMetadata {
   runningOperation?: {
     assistantMessageId: string;
     operationId: string;
+    scope?: string;
+    threadId?: string | null;
   } | null;
   userMemoryExtractRunState?: TopicUserMemoryExtractRunState;
   userMemoryExtractStatus?: 'pending' | 'completed' | 'failed';
