@@ -270,6 +270,10 @@ export class AgentStreamClient extends TypedEmitter {
 
         case 'session_complete': {
           this.sessionEnded = true;
+          // Flush any buffered resume events before disconnecting
+          if (this.resumeMode) {
+            this.flushResumeBuffer();
+          }
           this.emit('session_complete');
           this.disconnect();
           break;
