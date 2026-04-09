@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import useSWR from 'swr';
 
 import { useChatStore } from '@/store/chat';
 import { topicSelectors } from '@/store/chat/selectors';
@@ -7,39 +7,39 @@ import { topicSelectors } from '@/store/chat/selectors';
  * Hook that detects a running Gateway operation on the current topic
  * and automatically reconnects the WebSocket after page reload.
  *
- * Subscribes to the topic's runningOperation metadata so it triggers
- * even when topic data arrives asynchronously from SWR.
+ * Uses SWR to manage the reconnect lifecycle — it only fires when
+ * runningOperation exists and deduplicates by operationId.
  */
 export const useGatewayReconnect = (topicId?: string | null) => {
-  const reconnectedRef = useRef<Set<string>>(new Set());
-
-  const reconnectToGatewayOperation = useChatStore((s) => s.reconnectToGatewayOperation);
   const isGatewayModeEnabled = useChatStore((s) => s.isGatewayModeEnabled);
 
-  // Subscribe to the topic's runningOperation so the effect re-fires
-  // when topic metadata arrives from SWR (initially empty on page load)
+  // Subscribe to topic's runningOperation — re-evaluates when topic data arrives from SWR
   const runningOperation = useChatStore((s) =>
     topicId ? topicSelectors.getTopicById(topicId)(s)?.metadata?.runningOperation : undefined,
   );
 
-  useEffect(() => {
-    if (!topicId || !runningOperation || !isGatewayModeEnabled()) return;
+  // SWR key is the operationId — null key means no fetch
+  // This naturally deduplicates: same operationId = same key = no re-fetch
+  useSWR(
+    runningOperation && isGatewayModeEnabled()
+      ? ['reconnectGateway', runningOperation.operationId]
+      : null,
+    async () => {
+      if (!runningOperation || !topicId) return;
 
-    // Skip if already reconnected to this operation
-    if (reconnectedRef.current.has(runningOperation.operationId)) return;
-
-    // Mark as reconnected to avoid duplicate connections
-    reconnectedRef.current.add(runningOperation.operationId);
-
-    reconnectToGatewayOperation({
-      assistantMessageId: runningOperation.assistantMessageId,
-      operationId: runningOperation.operationId,
-      scope: runningOperation.scope,
-      threadId: runningOperation.threadId,
-      topicId,
-    }).catch((e) => {
-      console.error('[GatewayReconnect] Failed to reconnect:', e);
-      reconnectedRef.current.delete(runningOperation.operationId);
-    });
-  }, [topicId, runningOperation, isGatewayModeEnabled, reconnectToGatewayOperation]);
+      await useChatStore.getState().reconnectToGatewayOperation({
+        assistantMessageId: runningOperation.assistantMessageId,
+        operationId: runningOperation.operationId,
+        scope: runningOperation.scope,
+        threadId: runningOperation.threadId,
+        topicId,
+      });
+    },
+    {
+      // Don't revalidate on focus/reconnect — one attempt is enough
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
 };
